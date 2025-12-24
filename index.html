@@ -8,6 +8,46 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
+  <!-- MODAL DE LOGIN -->
+  <div class="login-modal" id="loginModal">
+    <div class="login-dialog">
+      <div class="login-header">
+        <img src="https://res.cloudinary.com/dstcnsu6a/image/upload/v1764599371/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg.jpg" alt="COAJ Madrid" class="login-logo">
+        <h2>Bienvenido a COAJ Madrid</h2>
+        <p>Accede para ver las actividades</p>
+      </div>
+      
+      <div class="login-body">
+        <button class="btn-invitado" onclick="entrarComoInvitado()">
+          👤 Entrar como Invitado
+        </button>
+
+        <div class="login-divider">
+          <span>O</span>
+        </div>
+
+        <form id="loginForm" onsubmit="iniciarSesion(event)">
+          <div class="form-group">
+            <label>Usuario (Alias)</label>
+            <input type="text" id="alias" placeholder="Ingresa tu usuario" required>
+          </div>
+          
+          <div class="form-group">
+            <label>Contraseña</label>
+            <input type="password" id="contrasena" placeholder="Ingresa tu contraseña" required>
+          </div>
+
+          <div id="loginError" class="login-error" style="display: none;"></div>
+
+          <button type="submit" class="btn-login">
+            🔐 Iniciar Sesión
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <header class="header">
     <div class="header-content">
       <div class="logo">
@@ -19,7 +59,10 @@
           <p id="fecha"></p>
         </div>
       </div>
-      <button class="btn-reload" onclick="cargarActividades()">🔄</button>
+      <div class="user-info">
+        <span id="nombreUsuario">Invitado</span>
+        <button class="btn-logout" onclick="cerrarSesion()">Salir</button>
+      </div>
     </div>
   </header>
 
