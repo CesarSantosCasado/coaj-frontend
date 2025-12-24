@@ -63,15 +63,11 @@ function iniciarSesion(event) {
   }
   
   errorDiv.style.display = 'none';
-  
-  // DESHABILITAR FORMULARIO
   btnLogin.innerHTML = '⏳ Verificando credenciales...';
   btnLogin.disabled = true;
   form.querySelectorAll('input').forEach(function(input) {
     input.disabled = true;
   });
-  
-  console.log('Intentando login con:', alias);
   
   fetch(LOGIN_URL, {
     method: 'POST',
@@ -82,19 +78,15 @@ function iniciarSesion(event) {
     body: JSON.stringify({ alias: alias, contrasena: contrasena })
   })
     .then(function(response) {
-      console.log('Respuesta recibida:', response.status);
       if (!response.ok) {
         throw new Error('Error en la respuesta del servidor');
       }
       return response.json();
     })
     .then(function(data) {
-      console.log('Datos recibidos:', data);
-      
       if (data.success) {
         btnLogin.innerHTML = '✅ ¡Acceso concedido!';
         
-        // ESPERAR 500ms ANTES DE CONTINUAR
         setTimeout(function() {
           usuarioActual = data.usuario;
           localStorage.setItem('coajUsuario', JSON.stringify(usuarioActual));
@@ -103,7 +95,6 @@ function iniciarSesion(event) {
           document.getElementById('alias').value = '';
           document.getElementById('contrasena').value = '';
           
-          // RESTAURAR FORMULARIO
           btnLogin.innerHTML = '🔐 Iniciar Sesión';
           btnLogin.disabled = false;
           form.querySelectorAll('input').forEach(function(input) {
@@ -113,7 +104,6 @@ function iniciarSesion(event) {
           cargarActividades();
         }, 500);
       } else {
-        // RESTAURAR FORMULARIO
         btnLogin.innerHTML = '🔐 Iniciar Sesión';
         btnLogin.disabled = false;
         form.querySelectorAll('input').forEach(function(input) {
@@ -125,16 +115,14 @@ function iniciarSesion(event) {
       }
     })
     .catch(function(error) {
-      console.error('Error completo:', error);
-      
-      // RESTAURAR FORMULARIO
+      console.error('Error:', error);
       btnLogin.innerHTML = '🔐 Iniciar Sesión';
       btnLogin.disabled = false;
       form.querySelectorAll('input').forEach(function(input) {
         input.disabled = false;
       });
       
-      errorDiv.textContent = 'Error de conexión. El servidor puede estar iniciando (espera 30 seg y vuelve a intentar).';
+      errorDiv.textContent = 'Error de conexión. Intenta de nuevo.';
       errorDiv.style.display = 'block';
     });
 }
@@ -720,7 +708,6 @@ function abrirModal(act) {
     '<div class="modal-info-card"><small>👥 Plazas</small><strong>' + (act.Plazas || 'N/A') + '</strong></div>' +
     '<div class="modal-info-card"><small>🎯 Tipo</small><strong>' + (act["Tipo de Actividad"] || 'N/A') + '</strong></div>';
 
-  // AGREGAR BOTÓN DE INSCRIPCIÓN (solo si NO es invitado)
   if (usuarioActual && usuarioActual.alias !== 'invitado') {
     var btnInscribirse = document.createElement('button');
     btnInscribirse.className = 'btn-inscribirse';
@@ -748,30 +735,17 @@ function actualizarFecha() {
   document.getElementById('fecha').textContent = f;
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('Página cargada');
-  actualizarFecha();
-  verificarSesion();
-  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') cerrarModal(); });
-});
-// ============================================
-// FUNCIÓN DE INSCRIPCIÓN
-// ============================================
-
 function inscribirseActividad(actividad) {
-  // Verificar que esté logueado
   if (!usuarioActual || usuarioActual.alias === 'invitado') {
     alert('Debes iniciar sesión para inscribirte');
     return;
   }
 
-  // Confirmar inscripción
   var nombreActividad = actividad.Actividad || actividad["ID Actividad"] || "esta actividad";
   if (!confirm('¿Deseas inscribirte a "' + nombreActividad + '"?')) {
     return;
   }
 
-  // Crear overlay de carga
   var overlay = document.createElement('div');
   overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(3, 40, 69, 0.9); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);';
   
@@ -782,7 +756,6 @@ function inscribirseActividad(actividad) {
   overlay.appendChild(loader);
   document.body.appendChild(overlay);
 
-  // Enviar inscripción
   fetch(INSCRIPCION_URL, {
     method: 'POST',
     headers: { 
@@ -799,7 +772,6 @@ function inscribirseActividad(actividad) {
       document.body.removeChild(overlay);
       
       if (data.success) {
-        // Mensaje de éxito
         var successDiv = document.createElement('div');
         successDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 24px 72px rgba(0,0,0,0.4); z-index: 10001; text-align: center; min-width: 300px;';
         successDiv.innerHTML = '<div style="font-size: 3rem; margin-bottom: 1rem;">✅</div><div style="font-size: 1.25rem; font-weight: 900; color: #032845; margin-bottom: 0.5rem;">¡Inscripción exitosa!</div><div style="font-size: 0.9375rem; color: #64748b; margin-bottom: 1.5rem;">Te has inscrito a ' + nombreActividad + '</div><button onclick="this.parentElement.remove()" style="padding: 0.75rem 1.5rem; background: #e8552a; color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;">Entendido</button>';
@@ -819,3 +791,8 @@ function inscribirseActividad(actividad) {
     });
 }
 
+document.addEventListener('DOMContentLoaded', function() {
+  actualizarFecha();
+  verificarSesion();
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') cerrarModal(); });
+});
