@@ -1134,3 +1134,48 @@ body.modal-open { overflow: hidden; height: 100vh; }
 ::-webkit-scrollbar-track { background: #f8fafc; }
 ::-webkit-scrollbar-thumb { background: #e8552a; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #ff6b35; }
+/* ============================================ */
+/* AGREGAR AL FINAL DE styles.css */
+/* ============================================ */
+
+.btn-login:disabled,
+.btn-invitado:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.form-group input:disabled {
+  background: #f8fafc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Animación del texto del botón */
+.btn-login {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-login::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn-login:active::after {
+  width: 300px;
+  height: 300px;
+}
