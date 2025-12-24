@@ -53,6 +53,7 @@ function iniciarSesion(event) {
   var contrasena = document.getElementById('contrasena').value;
   var errorDiv = document.getElementById('loginError');
   var btnLogin = event.target.querySelector('button[type="submit"]');
+  var form = event.target;
   
   if (!alias || !contrasena) {
     errorDiv.textContent = 'Por favor completa todos los campos';
@@ -61,8 +62,13 @@ function iniciarSesion(event) {
   }
   
   errorDiv.style.display = 'none';
-  btnLogin.textContent = '⏳ Iniciando...';
+  
+  // DESHABILITAR FORMULARIO
+  btnLogin.innerHTML = '⏳ Verificando credenciales...';
   btnLogin.disabled = true;
+  form.querySelectorAll('input').forEach(function(input) {
+    input.disabled = true;
+  });
   
   console.log('Intentando login con:', alias);
   
@@ -83,27 +89,51 @@ function iniciarSesion(event) {
     })
     .then(function(data) {
       console.log('Datos recibidos:', data);
-      btnLogin.textContent = '🔐 Iniciar Sesión';
-      btnLogin.disabled = false;
       
       if (data.success) {
-        usuarioActual = data.usuario;
-        localStorage.setItem('coajUsuario', JSON.stringify(usuarioActual));
-        document.getElementById('nombreUsuario').textContent = usuarioActual.nombre;
-        document.getElementById('loginModal').classList.add('hidden');
-        document.getElementById('alias').value = '';
-        document.getElementById('contrasena').value = '';
-        cargarActividades();
+        btnLogin.innerHTML = '✅ ¡Acceso concedido!';
+        
+        // ESPERAR 500ms ANTES DE CONTINUAR
+        setTimeout(function() {
+          usuarioActual = data.usuario;
+          localStorage.setItem('coajUsuario', JSON.stringify(usuarioActual));
+          document.getElementById('nombreUsuario').textContent = usuarioActual.nombre;
+          document.getElementById('loginModal').classList.add('hidden');
+          document.getElementById('alias').value = '';
+          document.getElementById('contrasena').value = '';
+          
+          // RESTAURAR FORMULARIO
+          btnLogin.innerHTML = '🔐 Iniciar Sesión';
+          btnLogin.disabled = false;
+          form.querySelectorAll('input').forEach(function(input) {
+            input.disabled = false;
+          });
+          
+          cargarActividades();
+        }, 500);
       } else {
+        // RESTAURAR FORMULARIO
+        btnLogin.innerHTML = '🔐 Iniciar Sesión';
+        btnLogin.disabled = false;
+        form.querySelectorAll('input').forEach(function(input) {
+          input.disabled = false;
+        });
+        
         errorDiv.textContent = data.message || 'Usuario o contraseña incorrectos';
         errorDiv.style.display = 'block';
       }
     })
     .catch(function(error) {
       console.error('Error completo:', error);
-      btnLogin.textContent = '🔐 Iniciar Sesión';
+      
+      // RESTAURAR FORMULARIO
+      btnLogin.innerHTML = '🔐 Iniciar Sesión';
       btnLogin.disabled = false;
-      errorDiv.textContent = 'Error de conexión. Verifica tu usuario y contraseña.';
+      form.querySelectorAll('input').forEach(function(input) {
+        input.disabled = false;
+      });
+      
+      errorDiv.textContent = 'Error de conexión. El servidor puede estar iniciando (espera 30 seg y vuelve a intentar).';
       errorDiv.style.display = 'block';
     });
 }
