@@ -1,4 +1,5 @@
 const API_URL = 'https://coaj-backend.onrender.com/api/datos';
+const LOGIN_URL = 'https://coaj-backend.onrender.com/api/login';
 
 var actividades = [];
 var actividadVigente = [];
@@ -7,6 +8,7 @@ var claseActual = 'todas';
 var centroActual = 'todos';
 var mesActual = new Date().getMonth();
 var añoActual = new Date().getFullYear();
+var usuarioActual = null;
 
 var iconos = {
   'Cultura': '📚', 'Deporte': '⚽', 'Ocio': '🎮', 'Ocio y Tiempo Libre': '🎮',
@@ -16,6 +18,80 @@ var iconos = {
 
 var mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 var diasSemana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+// ============================================
+// FUNCIONES DE LOGIN
+// ============================================
+
+function verificarSesion() {
+  var sesion = localStorage.getItem('coajUsuario');
+  if (sesion) {
+    usuarioActual = JSON.parse(sesion);
+    document.getElementById('nombreUsuario').textContent = usuarioActual.nombre;
+    document.getElementById('loginModal').classList.add('hidden');
+    cargarActividades();
+  } else {
+    document.getElementById('loginModal').classList.remove('hidden');
+  }
+}
+
+function entrarComoInvitado() {
+  usuarioActual = {
+    alias: 'invitado',
+    nombre: 'Invitado'
+  };
+  localStorage.setItem('coajUsuario', JSON.stringify(usuarioActual));
+  document.getElementById('nombreUsuario').textContent = 'Invitado';
+  document.getElementById('loginModal').classList.add('hidden');
+  cargarActividades();
+}
+
+function iniciarSesion(event) {
+  event.preventDefault();
+  
+  var alias = document.getElementById('alias').value;
+  var contrasena = document.getElementById('contrasena').value;
+  var errorDiv = document.getElementById('loginError');
+  
+  errorDiv.style.display = 'none';
+  
+  fetch(LOGIN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ alias, contrasena })
+  })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        usuarioActual = data.usuario;
+        localStorage.setItem('coajUsuario', JSON.stringify(usuarioActual));
+        document.getElementById('nombreUsuario').textContent = usuarioActual.nombre;
+        document.getElementById('loginModal').classList.add('hidden');
+        cargarActividades();
+      } else {
+        errorDiv.textContent = data.message || 'Error al iniciar sesión';
+        errorDiv.style.display = 'block';
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      errorDiv.textContent = 'Error de conexión. Intenta de nuevo.';
+      errorDiv.style.display = 'block';
+    });
+}
+
+function cerrarSesion() {
+  localStorage.removeItem('coajUsuario');
+  usuarioActual = null;
+  document.getElementById('loginModal').classList.remove('hidden');
+  document.getElementById('alias').value = '';
+  document.getElementById('contrasena').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+// ============================================
+// FUNCIONES ORIGINALES
+// ============================================
 
 function cargarActividades() {
   document.getElementById('loading').style.display = 'block';
@@ -600,6 +676,6 @@ function actualizarFecha() {
 
 document.addEventListener('DOMContentLoaded', function() {
   actualizarFecha();
-  cargarActividades();
+  verificarSesion();
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') cerrarModal(); });
 });
