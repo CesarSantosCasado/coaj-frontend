@@ -1,5 +1,6 @@
 const API_URL = 'https://coajmadrid-8273afef0255.herokuapp.com/api/datos';
 const LOGIN_URL = 'https://coajmadrid-8273afef0255.herokuapp.com/api/login';
+const INSCRIPCION_URL = 'https://coajmadrid-8273afef0255.herokuapp.com/api/inscribir';
 
 var actividades = [];
 var actividadVigente = [];
@@ -708,7 +709,7 @@ function abrirModal(act) {
   var horaInicio = formatearHora(act["Hora de inicio"]);
   var horaFin = formatearHora(act["Hora de finalización"]);
 
-  var info = document.getElementById('modalInfo');
+ var info = document.getElementById('modalInfo');
   info.innerHTML =
     '<div class="modal-info-card"><small>📅 Del</small><strong>' + (formatearFecha(act.Del) || 'N/A') + '</strong></div>' +
     '<div class="modal-info-card"><small>⏰ Al</small><strong>' + (formatearFecha(act.Al) || 'N/A') + '</strong></div>' +
@@ -719,9 +720,17 @@ function abrirModal(act) {
     '<div class="modal-info-card"><small>👥 Plazas</small><strong>' + (act.Plazas || 'N/A') + '</strong></div>' +
     '<div class="modal-info-card"><small>🎯 Tipo</small><strong>' + (act["Tipo de Actividad"] || 'N/A') + '</strong></div>';
 
-  modal.classList.add('active');
-  document.body.classList.add('modal-open');
-}
+  // AGREGAR BOTÓN DE INSCRIPCIÓN (solo si NO es invitado)
+  if (usuarioActual && usuarioActual.alias !== 'invitado') {
+    var btnInscribirse = document.createElement('button');
+    btnInscribirse.className = 'btn-inscribirse';
+    btnInscribirse.innerHTML = '📝 Inscribirme a esta actividad';
+    btnInscribirse.onclick = function() { 
+      cerrarModal(); 
+      inscribirseActividad(act); 
+    };
+    document.getElementById('modalInfo').appendChild(btnInscribirse);
+  }
 
 function cerrarModal(e) {
   if (!e || e.target.id === 'modal') {
@@ -741,3 +750,68 @@ document.addEventListener('DOMContentLoaded', function() {
   verificarSesion();
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') cerrarModal(); });
 });
+// ============================================
+// FUNCIÓN DE INSCRIPCIÓN
+// ============================================
+
+function inscribirseActividad(actividad) {
+  // Verificar que esté logueado
+  if (!usuarioActual || usuarioActual.alias === 'invitado') {
+    alert('Debes iniciar sesión para inscribirte');
+    return;
+  }
+
+  // Confirmar inscripción
+  var nombreActividad = actividad.Actividad || actividad["ID Actividad"] || "esta actividad";
+  if (!confirm('¿Deseas inscribirte a "' + nombreActividad + '"?')) {
+    return;
+  }
+
+  // Crear overlay de carga
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(3, 40, 69, 0.9); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);';
+  
+  var loader = document.createElement('div');
+  loader.style.cssText = 'background: white; padding: 2rem; border-radius: 20px; text-align: center; box-shadow: 0 24px 72px rgba(0,0,0,0.4);';
+  loader.innerHTML = '<div style="width: 50px; height: 50px; border: 4px solid #e2e8f0; border-top-color: #e8552a; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div><div style="font-size: 1.125rem; font-weight: 700; color: #032845;">Inscribiendo...</div>';
+  
+  overlay.appendChild(loader);
+  document.body.appendChild(overlay);
+
+  // Enviar inscripción
+  fetch(INSCRIPCION_URL, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ 
+      actividad: actividad["ID Actividad"],
+      usuario: usuarioActual.alias
+    })
+  })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+      document.body.removeChild(overlay);
+      
+      if (data.success) {
+        // Mensaje de éxito
+        var successDiv = document.createElement('div');
+        successDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 24px 72px rgba(0,0,0,0.4); z-index: 10001; text-align: center; min-width: 300px;';
+        successDiv.innerHTML = '<div style="font-size: 3rem; margin-bottom: 1rem;">✅</div><div style="font-size: 1.25rem; font-weight: 900; color: #032845; margin-bottom: 0.5rem;">¡Inscripción exitosa!</div><div style="font-size: 0.9375rem; color: #64748b; margin-bottom: 1.5rem;">Te has inscrito a ' + nombreActividad + '</div><button onclick="this.parentElement.remove()" style="padding: 0.75rem 1.5rem; background: #e8552a; color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;">Entendido</button>';
+        document.body.appendChild(successDiv);
+        
+        setTimeout(function() { 
+          if (successDiv.parentElement) successDiv.remove(); 
+        }, 5000);
+      } else {
+        alert('Error: ' + (data.message || 'No se pudo completar la inscripción'));
+      }
+    })
+    .catch(function(error) {
+      document.body.removeChild(overlay);
+      console.error('Error:', error);
+      alert('Error de conexión. Intenta de nuevo.');
+    });
+}
+
