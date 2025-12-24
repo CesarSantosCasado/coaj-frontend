@@ -709,7 +709,7 @@ function abrirModal(act) {
   var horaInicio = formatearHora(act["Hora de inicio"]);
   var horaFin = formatearHora(act["Hora de finalización"]);
 
- var info = document.getElementById('modalInfo');
+  var info = document.getElementById('modalInfo');
   info.innerHTML =
     '<div class="modal-info-card"><small>📅 Del</small><strong>' + (formatearFecha(act.Del) || 'N/A') + '</strong></div>' +
     '<div class="modal-info-card"><small>⏰ Al</small><strong>' + (formatearFecha(act.Al) || 'N/A') + '</strong></div>' +
@@ -729,8 +729,12 @@ function abrirModal(act) {
       cerrarModal(); 
       inscribirseActividad(act); 
     };
-    document.getElementById('modalInfo').appendChild(btnInscribirse);
+    info.appendChild(btnInscribirse);
   }
+
+  modal.classList.add('active');
+  document.body.classList.add('modal-open');
+}
 
 function cerrarModal(e) {
   if (!e || e.target.id === 'modal') {
