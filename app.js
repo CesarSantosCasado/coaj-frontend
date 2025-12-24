@@ -49,33 +49,61 @@ function entrarComoInvitado() {
 function iniciarSesion(event) {
   event.preventDefault();
   
-  var alias = document.getElementById('alias').value;
+  var alias = document.getElementById('alias').value.trim();
   var contrasena = document.getElementById('contrasena').value;
   var errorDiv = document.getElementById('loginError');
+  var btnLogin = event.target.querySelector('button[type="submit"]');
+  
+  if (!alias || !contrasena) {
+    errorDiv.textContent = 'Por favor completa todos los campos';
+    errorDiv.style.display = 'block';
+    return;
+  }
   
   errorDiv.style.display = 'none';
+  btnLogin.textContent = '⏳ Iniciando...';
+  btnLogin.disabled = true;
+  
+  console.log('Intentando login con:', alias);
   
   fetch(LOGIN_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ alias, contrasena })
+    headers: { 
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({ alias: alias, contrasena: contrasena })
   })
-    .then(response => response.json())
-    .then(data => {
+    .then(function(response) {
+      console.log('Respuesta recibida:', response.status);
+      if (!response.ok) {
+        throw new Error('Error en la respuesta del servidor');
+      }
+      return response.json();
+    })
+    .then(function(data) {
+      console.log('Datos recibidos:', data);
+      btnLogin.textContent = '🔐 Iniciar Sesión';
+      btnLogin.disabled = false;
+      
       if (data.success) {
         usuarioActual = data.usuario;
         localStorage.setItem('coajUsuario', JSON.stringify(usuarioActual));
         document.getElementById('nombreUsuario').textContent = usuarioActual.nombre;
         document.getElementById('loginModal').classList.add('hidden');
+        document.getElementById('alias').value = '';
+        document.getElementById('contrasena').value = '';
         cargarActividades();
       } else {
-        errorDiv.textContent = data.message || 'Error al iniciar sesión';
+        errorDiv.textContent = data.message || 'Usuario o contraseña incorrectos';
         errorDiv.style.display = 'block';
       }
     })
-    .catch(error => {
-      console.error('Error:', error);
-      errorDiv.textContent = 'Error de conexión. Intenta de nuevo.';
+    .catch(function(error) {
+      console.error('Error completo:', error);
+      btnLogin.textContent = '🔐 Iniciar Sesión';
+      btnLogin.disabled = false;
+      errorDiv.textContent = 'Error de conexión. Verifica tu usuario y contraseña.';
       errorDiv.style.display = 'block';
     });
 }
@@ -87,6 +115,8 @@ function cerrarSesion() {
   document.getElementById('alias').value = '';
   document.getElementById('contrasena').value = '';
   document.getElementById('loginError').style.display = 'none';
+  document.getElementById('vistaTarjetas').innerHTML = '';
+  document.getElementById('vistaCalendario').innerHTML = '';
 }
 
 // ============================================
@@ -95,12 +125,13 @@ function cerrarSesion() {
 
 function cargarActividades() {
   document.getElementById('loading').style.display = 'block';
+  document.getElementById('empty').style.display = 'none';
   document.getElementById('vistaTarjetas').innerHTML = '';
   document.getElementById('vistaCalendario').innerHTML = '';
   
   fetch(API_URL)
-    .then(response => response.json())
-    .then(data => {
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
       actividades = filtrarVigentes(data.actividades || []);
       actividadVigente = data.actividadVigente || [];
       generarFiltros(actividades);
@@ -108,7 +139,7 @@ function cargarActividades() {
       render(actividades);
       actualizarFecha();
     })
-    .catch(error => {
+    .catch(function(error) {
       console.error('Error:', error);
       document.getElementById('loading').style.display = 'none';
       document.getElementById('empty').style.display = 'block';
@@ -675,6 +706,7 @@ function actualizarFecha() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('Página cargada');
   actualizarFecha();
   verificarSesion();
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') cerrarModal(); });
