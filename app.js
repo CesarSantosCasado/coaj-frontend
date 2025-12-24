@@ -1,5 +1,5 @@
-const API_URL = 'https://coaj-backend.onrender.com/api/datos';
-const LOGIN_URL = 'https://coaj-backend.onrender.com/api/login';
+const API_URL = 'https://coajmadrid-8273afef0255.herokuapp.com/api/datos';
+const LOGIN_URL = 'https://coajmadrid-8273afef0255.herokuapp.com/api/login';
 
 var actividades = [];
 var actividadVigente = [];
