@@ -1,0 +1,376 @@
+/* ============================================ */
+/* HOME.CSS – COAJ MADRID (PÁGINA DE INICIO) */
+/* ============================================ */
+
+/* RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #1a2332;
+  color: white;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+
+/* ============================================ */
+/* ANIMATED BACKGROUND */
+/* ============================================ */
+
+.animated-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    135deg,
+    #1a2332 0%,
+    #2a3444 25%,
+    #3a4554 50%,
+    #2a3444 75%,
+    #1a2332 100%
+  );
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ============================================ */
+/* PARTICLES */
+/* ============================================ */
+
+.particles {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: rgba(232, 85, 42, 0.6);
+  border-radius: 50%;
+  animation: float 20s infinite;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% {
+    transform: translateY(-100vh) translateX(50px);
+    opacity: 0;
+  }
+}
+
+/* ============================================ */
+/* GLOWING ORBS */
+/* ============================================ */
+
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.3;
+  z-index: 1;
+  pointer-events: none;
+  animation: orbFloat 20s infinite ease-in-out;
+}
+
+.orb-1 {
+  width: 400px;
+  height: 400px;
+  background: #e8552a;
+  top: 10%;
+  left: 10%;
+}
+
+.orb-2 {
+  width: 300px;
+  height: 300px;
+  background: #0a3d5c;
+  bottom: 20%;
+  right: 10%;
+  animation-delay: 5s;
+}
+
+.orb-3 {
+  width: 350px;
+  height: 350px;
+  background: #ff6b35;
+  top: 50%;
+  right: 20%;
+  animation-delay: 10s;
+}
+
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(50px, -50px) scale(1.1); }
+  66% { transform: translate(-30px, 30px) scale(0.9); }
+}
+
+/* ============================================ */
+/* CONTAINER */
+/* ============================================ */
+
+.container {
+  position: relative;
+  z-index: 10;
+  min-height: 100vh;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================ */
+/* LOGO SECTION */
+/* ============================================ */
+
+.logo-section {
+  text-align: center;
+  margin-bottom: 2rem;
+  animation: fadeInDown 1s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.logo-container {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 1.5rem;
+}
+
+.logo-glow {
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(circle, rgba(232, 85, 42, 0.4) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: pulse 3s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.logo {
+  width: 140px;
+  height: 140px;
+  background: white;
+  border-radius: 30px;
+  padding: 15px;
+  box-shadow:
+    0 10px 40px rgba(0,0,0,.3),
+    0 0 80px rgba(232,85,42,.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: logoFloat 6s infinite ease-in-out;
+}
+
+@keyframes logoFloat {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ============================================ */
+/* TITLES */
+/* ============================================ */
+
+.title {
+  font-size: 3rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #fff 0%, #e8552a 50%, #ff6b35 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: .5rem;
+  letter-spacing: -2px;
+}
+
+.subtitle {
+  font-size: 1.25rem;
+  opacity: .8;
+}
+
+/* ============================================ */
+/* STATS */
+/* ============================================ */
+
+.stats-bar {
+  display: flex;
+  gap: 3rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #e8552a, #ff6b35);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.stat-label {
+  font-size: .875rem;
+  opacity: .6;
+  text-transform: uppercase;
+}
+
+/* ============================================ */
+/* WELCOME */
+/* ============================================ */
+
+.welcome-section {
+  max-width: 800px;
+  text-align: center;
+  margin: 2rem auto 3rem;
+  animation: fadeIn 1s ease-out .4s both;
+}
+
+.welcome-title {
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.welcome-text {
+  font-size: 1.125rem;
+  opacity: .75;
+  line-height: 1.7;
+  margin: 1.5rem 0;
+}
+
+.welcome-cta {
+  display: inline-block;
+  padding: .75rem 1.5rem;
+  border-radius: 12px;
+  border: 2px solid rgba(232,85,42,.3);
+  color: #e8552a;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  transition: .3s;
+}
+
+.welcome-cta:hover {
+  background: rgba(232,85,42,.2);
+  transform: translateY(-2px);
+}
+
+/* ============================================ */
+/* CARDS */
+/* ============================================ */
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px,1fr));
+  gap: 2rem;
+  max-width: 1200px;
+  width: 100%;
+}
+
+.card {
+  background: rgba(255,255,255,.05);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 2.5rem;
+  color: white;
+  text-decoration: none;
+  transition: .5s;
+}
+
+.card:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 20px 60px rgba(0,0,0,.4);
+}
+
+.card-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg,#e8552a,#ff6b35);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.card-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.card-description {
+  opacity: .7;
+  margin: 1rem 0;
+}
+
+.card-arrow {
+  color: #e8552a;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* ============================================ */
+/* FOOTER */
+/* ============================================ */
+
+.footer {
+  margin-top: 4rem;
+  opacity: .5;
+  font-size: .9rem;
+  text-align: center;
+}
+
+/* ============================================ */
+/* RESPONSIVE */
+/* ============================================ */
+
+@media (max-width: 768px) {
+  .title { font-size: 2rem; }
+  .logo { width: 100px; height: 100px; }
+  .stats-bar { flex-direction: column; gap: 1.5rem; }
+}
+
+@media (max-width: 480px) {
+  .container { padding: 1.5rem 1rem; }
+  .title { font-size: 1.75rem; }
+}
