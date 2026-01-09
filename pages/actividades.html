@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COAJ Madrid - Actividades</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- MODAL DE LOGIN -->
+  <div class="login-modal" id="loginModal">
+    <div class="login-dialog">
+      <div class="login-header">
+        <img src="https://res.cloudinary.com/dstcnsu6a/image/upload/v1764599371/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg.jpg" alt="COAJ Madrid" class="login-logo">
+        <h2>Bienvenido a COAJ Madrid</h2>
+        <p>Accede para ver las actividades</p>
+      </div>
+      
+      <div class="login-body">
+        <button class="btn-invitado" onclick="entrarComoInvitado()">
+          👤 Entrar como Invitado
+        </button>
+
+        <div class="login-divider">
+          <span>O</span>
+        </div>
+
+        <form id="loginForm" onsubmit="iniciarSesion(event)">
+          <div class="form-group">
+            <label>Usuario (Alias)</label>
+            <input type="text" id="alias" placeholder="Ingresa tu usuario" required>
+          </div>
+          
+          <div class="form-group">
+            <label>Contraseña</label>
+            <input type="password" id="contrasena" placeholder="Ingresa tu contraseña" required>
+          </div>
+
+          <div id="loginError" class="login-error" style="display: none;"></div>
+
+          <button type="submit" class="btn-login">
+            🔐 Iniciar Sesión
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">
+        <div class="logo-icon">
+          <img src="https://res.cloudinary.com/dstcnsu6a/image/upload/v1764599371/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg.jpg" alt="COAJ Madrid">
+        </div>
+        <div class="logo-text">
+          <h1>Actividades COAJ</h1>
+          <p id="fecha"></p>
+        </div>
+      </div>
+      <div class="user-info">
+        <span id="nombreUsuario">Invitado</span>
+        <button class="btn-logout" onclick="cerrarSesion()">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="view-toggle">
+      <button class="view-btn active" onclick="cambiarVista('tarjetas')">🎴 Ver en Tarjetas</button>
+      <button class="view-btn" onclick="cambiarVista('calendario')">📅 Ver en Calendario</button>
+    </div>
+
+    <div class="filtros-container" id="filtros"></div>
+    <div class="filtros-centros" id="filtrosCentros"></div>
+
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <div class="loading-text">Cargando actividades...</div>
+      <div class="loading-subtext">Espera un momento</div>
+    </div>
+
+    <div id="empty" class="empty" style="display: none;">
+      <div class="empty-icon">🎯</div>
+      <div class="empty-title">No hay actividades</div>
+      <div class="empty-text">No se encontraron actividades para mostrar</div>
+    </div>
+
+    <div id="vistaTarjetas" style="display: block;"></div>
+    <div id="vistaCalendario" style="display: none;"></div>
+  </div>
+
+  <div class="modal" id="modal" onclick="cerrarModal(event)">
+    <div class="modal-dialog" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="cerrarModal()">✕</button>
+      <div class="modal-body">
+        <img class="modal-header-img" id="modalImg" src="" alt="">
+        <h2 class="modal-title" id="modalTitulo"></h2>
+        <div class="modal-badges" id="modalBadges"></div>
+        <div class="modal-section">
+          <div class="section-title">📝 Descripción</div>
+          <div class="modal-description" id="modalDescripcion"></div>
+        </div>
+        <div class="modal-section">
+          <div class="section-title">📊 Información</div>
+          <div class="modal-grid" id="modalInfo"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
