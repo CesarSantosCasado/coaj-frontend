@@ -192,7 +192,27 @@ body.modal-open { overflow: hidden; height: 100vh; }
 }
 
 .filtros-container::-webkit-scrollbar { 
-  display: none; 
+  display: block;
+  height: 6px; 
+}
+
+.filtros-container::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 3px;
+}
+
+.filtros-container::-webkit-scrollbar-thumb {
+  background: #e8552a;
+  border-radius: 3px;
+}
+
+.filtros-container::-webkit-scrollbar-thumb:hover {
+  background: #ff6b35;
+}
+
+.filtros-container {
+  scrollbar-width: thin;
+  scrollbar-color: #e8552a #e2e8f0;
 }
 
 .filtro-btn { 
