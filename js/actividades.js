@@ -1,8 +1,8 @@
 // ============================================
 // COAJ MADRID - ACTIVIDADES.JS
-// CAMPOS CORRECTOS SEGÚN GAS ORIGINAL:
+// CAMPOS CORRECTOS DEL GAS:
 // Actividad, Centro Juvenil, Clase, Estado, Plazas,
-// Del, Al, Días, ID Actividad, Imagen/URL Actividad
+// Del, Al, Días, ID Actividad, URL Actividad (en actividadVigente)
 // ============================================
 
 const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
@@ -89,6 +89,12 @@ function mostrarUsuario(usuario) {
   if (menuAvatarInitial) menuAvatarInitial.textContent = inicial;
   if (menuUserName) menuUserName.textContent = nombre;
   if (menuUserEmail) menuUserEmail.textContent = usuario.email || `${usuario.alias || 'usuario'}@coaj.es`;
+  
+  // Bottom nav
+  const bottomAvatarInitial = document.getElementById('bottomAvatarInitial');
+  const bottomUserName = document.getElementById('bottomUserName');
+  if (bottomAvatarInitial) bottomAvatarInitial.textContent = inicial;
+  if (bottomUserName) bottomUserName.textContent = nombre.split(' ')[0];
 }
 
 function actualizarBottomNav(logueado, usuario) {
@@ -96,18 +102,8 @@ function actualizarBottomNav(logueado, usuario) {
   const navUser = document.getElementById('bottomNavUser');
   
   if (logueado && usuario) {
-    const nombre = usuario.nombre || usuario.alias || 'Usuario';
-    const inicial = nombre.charAt(0).toUpperCase();
-    const primerNombre = nombre.split(' ')[0];
-    
     if (navGuest) navGuest.style.display = 'none';
-    if (navUser) {
-      navUser.style.display = 'flex';
-      const bottomAvatarInitial = document.getElementById('bottomAvatarInitial');
-      const bottomUserName = document.getElementById('bottomUserName');
-      if (bottomAvatarInitial) bottomAvatarInitial.textContent = inicial;
-      if (bottomUserName) bottomUserName.textContent = primerNombre;
-    }
+    if (navUser) navUser.style.display = 'flex';
   } else {
     if (navGuest) navGuest.style.display = 'flex';
     if (navUser) navUser.style.display = 'none';
@@ -220,10 +216,9 @@ function cambiarVistaGrid(vista) {
 document.addEventListener('click', (e) => {
   const menu = document.getElementById('userMenu');
   const avatar = document.getElementById('headerAvatar');
-  const bottomUser = document.querySelector('.bottom-nav-user');
   
   if (menu?.classList.contains('active')) {
-    if (!menu.contains(e.target) && !avatar?.contains(e.target) && !bottomUser?.contains(e.target)) {
+    if (!menu.contains(e.target) && !avatar?.contains(e.target)) {
       menu.classList.remove('active');
     }
   }
@@ -244,12 +239,16 @@ async function cargarDatos() {
     actividades = data.actividades || [];
     actividadVigente = data.actividadVigente || [];
     
-    console.log('✅ Actividades cargadas:', actividades.length);
+    console.log('✅ Actividades:', actividades.length);
     console.log('✅ ActividadVigente:', actividadVigente.length);
     
     if (actividades.length > 0) {
-      console.log('📋 Campos disponibles:', Object.keys(actividades[0]));
+      console.log('📋 Campos:', Object.keys(actividades[0]));
       console.log('📋 Ejemplo:', actividades[0]);
+    }
+    
+    if (actividadVigente.length > 0) {
+      console.log('📋 ActividadVigente campos:', Object.keys(actividadVigente[0]));
     }
     
     if (loading) loading.classList.add('hidden');
@@ -269,10 +268,41 @@ async function cargarDatos() {
       document.getElementById('seccionTodas')?.classList.remove('hidden');
     }
   } catch (err) {
-    console.error('❌ Error cargando datos:', err);
+    console.error('❌ Error:', err);
     if (loading) loading.classList.add('hidden');
     mostrarEmpty();
   }
+}
+
+// ============================================
+// OBTENER IMAGEN - Busca en actividadVigente por nombre
+// ============================================
+function getImagenActividad(actividad) {
+  const nombre = actividad.Actividad;
+  
+  // Buscar en actividadVigente por nombre de actividad
+  const vigente = actividadVigente.find(v => v.Actividad === nombre);
+  
+  if (vigente) {
+    // El campo es "URL Actividad" según el GAS
+    if (vigente['URL Actividad']) return vigente['URL Actividad'];
+    if (vigente.Imagen) return vigente.Imagen;
+  }
+  
+  // Fallback: imagen por defecto según la Clase
+  const imagenes = {
+    'Deporte': 'https://images.unsplash.com/photo-1461896836934- voices-of-youth?w=400',
+    'Arte': 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400',
+    'Música': 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400',
+    'Tecnología': 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400',
+    'Danza': 'https://images.unsplash.com/photo-1508700929628-666bc8bd84ea?w=400',
+    'Teatro': 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=400',
+    'Formación': 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400',
+    'Idiomas': 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=400',
+    'default': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'
+  };
+  
+  return imagenes[actividad.Clase] || imagenes.default;
 }
 
 // ============================================
@@ -299,60 +329,24 @@ function getIconoClase(clase) {
 }
 
 // ============================================
-// OBTENER IMAGEN DE ACTIVIDAD
+// FORMATEAR FECHAS
 // ============================================
-function getImagenActividad(a) {
-  // Buscar en varios campos posibles
-  if (a.Imagen && a.Imagen.trim()) return a.Imagen;
-  if (a['URL Actividad'] && a['URL Actividad'].trim()) return a['URL Actividad'];
-  if (a.Image && a.Image.trim()) return a.Image;
-  
-  // Buscar en actividadVigente por nombre
-  const vigente = actividadVigente.find(v => v.Actividad === a.Actividad);
-  if (vigente && vigente['URL Actividad']) return vigente['URL Actividad'];
-  
-  // Imagen por defecto según la clase
-  const imagenesDefault = {
-    'Deporte': 'https://images.unsplash.com/photo-1461896836934- voices-of-youth?w=400',
-    'Arte': 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400',
-    'Música': 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400',
-    'Tecnología': 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400',
-    'Danza': 'https://images.unsplash.com/photo-1508700929628-666bc8bd84ea?w=400',
-    'Teatro': 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=400',
-    'Formación': 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400',
-    'default': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'
-  };
-  
-  return imagenesDefault[a.Clase] || imagenesDefault.default;
-}
-
-// ============================================
-// FORMATEAR DÍAS
-// ============================================
-function formatearDias(dias) {
-  if (!dias) return 'Por definir';
-  return dias;
-}
-
-// ============================================
-// FORMATEAR FECHAS (Del - Al)
-// ============================================
-function formatearFechas(del, al) {
-  if (!del && !al) return 'Por definir';
-  
-  const formatear = (fecha) => {
-    if (!fecha) return '';
-    // Formato: MM/DD/YYYY o similar
-    const partes = fecha.split(' ')[0]; // Quitar hora si existe
-    return partes;
-  };
-  
-  const fechaDel = formatear(del);
-  const fechaAl = formatear(al);
-  
-  if (fechaDel && fechaAl) {
-    return `${fechaDel} - ${fechaAl}`;
+function formatearFecha(fecha) {
+  if (!fecha) return '';
+  // Formato típico: "1/15/2026 12:00:00 AM"
+  const partes = fecha.split(' ')[0];
+  if (partes.includes('/')) {
+    const [mes, dia, anio] = partes.split('/');
+    return `${dia}/${mes}/${anio}`;
   }
+  return fecha;
+}
+
+function formatearPeriodo(del, al) {
+  if (!del && !al) return 'Por definir';
+  const fechaDel = formatearFecha(del);
+  const fechaAl = formatearFecha(al);
+  if (fechaDel && fechaAl) return `${fechaDel} - ${fechaAl}`;
   return fechaDel || fechaAl || 'Por definir';
 }
 
@@ -374,14 +368,18 @@ function renderizarProximas() {
   const proximas = actividades.slice(0, 6);
   container.innerHTML = proximas.map((a, i) => {
     const badgeClass = i === 0 ? 'badge-hoy' : i === 1 ? 'badge-manana' : 'badge-semana';
-    const badgeText = i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : (a.Días?.split(',')[0]?.trim() || 'Próximo');
+    // Campo correcto es "Días" (con tilde)
+    const dias = a.Días || a.Dias || '';
+    const primerDia = dias.split(',')[0]?.trim() || 'Próximo';
+    const badgeText = i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : primerDia;
     return crearCardCarousel(a, badgeClass, badgeText);
   }).join('');
 }
 
 function crearCardCarousel(a, badgeClass, badgeText) {
   const img = getImagenActividad(a);
-  const texto = badgeText || a.Días?.split(',')[0]?.trim() || 'Próximo';
+  const dias = a.Días || a.Dias || 'Por definir';
+  const texto = badgeText || dias.split(',')[0]?.trim() || 'Próximo';
   const id = a['ID Actividad'] || a.Actividad;
   
   return `
@@ -393,8 +391,8 @@ function crearCardCarousel(a, badgeClass, badgeText) {
         <h3 class="activity-card-title">${a.Actividad || 'Sin título'}</h3>
         <div class="activity-card-meta">
           <div class="activity-card-meta-item">
-            <span class="material-symbols-outlined">calendar_today</span>
-            ${formatearDias(a.Días || a.Dias)}
+            <span class="material-symbols-outlined">event</span>
+            ${dias}
           </div>
           <div class="activity-card-meta-item">
             <span class="material-symbols-outlined">location_on</span>
@@ -410,7 +408,7 @@ function renderizarClases() {
   const container = document.getElementById('categoriasGrid');
   if (!container) return;
   
-  // Contar por Clase (campo correcto del GAS)
+  // Contar por "Clase" (campo correcto del GAS)
   const clases = {};
   actividades.forEach(a => {
     const clase = a.Clase || 'Otros';
@@ -443,12 +441,12 @@ function renderizarTodas() {
   
   let filtradas = actividades;
   
-  // Filtrar por Clase
+  // Filtrar por "Clase" (campo correcto)
   if (claseActiva !== 'Todas') {
     filtradas = filtradas.filter(a => a.Clase === claseActiva);
   }
   
-  // Filtrar por búsqueda
+  // Búsqueda
   if (busqueda) {
     const term = busqueda.toLowerCase();
     filtradas = filtradas.filter(a => 
@@ -475,6 +473,7 @@ function crearCardGrid(a) {
                     : estado.toLowerCase().includes('final') ? 'finalizado' 
                     : 'programado';
   const id = a['ID Actividad'] || a.Actividad;
+  const dias = a.Días || a.Dias || 'Por definir';
   
   return `
     <div class="activity-grid-card" onclick="abrirModal('${id}')">
@@ -489,12 +488,12 @@ function crearCardGrid(a) {
         <div class="activity-grid-footer">
           <div class="activity-grid-info">
             <div class="activity-grid-info-item">
-              <span class="material-symbols-outlined">calendar_today</span>
-              ${formatearDias(a.Días || a.Dias)}
+              <span class="material-symbols-outlined">event</span>
+              ${dias}
             </div>
             <div class="activity-grid-info-item">
               <span class="material-symbols-outlined">group</span>
-              ${a.Plazas || '∞'} plazas
+              ${a.Plazas || '∞'}
             </div>
           </div>
           <button class="activity-grid-btn">Ver más</button>
@@ -547,10 +546,10 @@ function limpiarFiltros() {
 }
 
 // ============================================
-// MODAL DETALLE
+// MODAL DETALLE - CAMPOS CORRECTOS DEL GAS
 // ============================================
 function abrirModal(id) {
-  // Buscar por ID Actividad o por nombre
+  // Buscar por "ID Actividad" o por nombre
   actividadSeleccionada = actividades.find(a => 
     (a['ID Actividad'] || a.Actividad) === id
   );
@@ -594,6 +593,7 @@ function abrirModal(id) {
   }
   
   // Info Grid - CAMPOS CORRECTOS DEL GAS
+  const dias = a.Días || a.Dias || 'Por definir';
   const modalInfo = document.getElementById('modalInfo');
   if (modalInfo) {
     modalInfo.innerHTML = `
@@ -603,11 +603,11 @@ function abrirModal(id) {
       </div>
       <div class="modal-info-item">
         <small><span class="material-symbols-outlined">event</span> Días</small>
-        <strong>${formatearDias(a.Días || a.Dias)}</strong>
+        <strong>${dias}</strong>
       </div>
       <div class="modal-info-item">
         <small><span class="material-symbols-outlined">date_range</span> Periodo</small>
-        <strong>${formatearFechas(a.Del, a.Al)}</strong>
+        <strong>${formatearPeriodo(a.Del, a.Al)}</strong>
       </div>
       <div class="modal-info-item">
         <small><span class="material-symbols-outlined">group</span> Plazas</small>
@@ -697,7 +697,7 @@ async function inscribirse() {
     const data = await res.json();
     
     if (data.success) {
-      mostrarToast('✅ ¡Inscripción exitosa!', 'success');
+      mostrarToast('¡Inscripción exitosa!', 'success');
       cerrarModal();
     } else {
       mostrarToast(data.message || 'Error al inscribirse', 'error');
@@ -719,7 +719,7 @@ function compartirActividad() {
   if (navigator.share) {
     navigator.share({
       title: actividadSeleccionada.Actividad,
-      text: `¡Mira esta actividad en COAJ Madrid! ${actividadSeleccionada.Actividad}`,
+      text: `¡Mira esta actividad en COAJ Madrid!`,
       url: window.location.href
     });
   } else {
