@@ -736,58 +736,56 @@ body {
 }
 
 /* ============================================
-   CATEGORIES GRID - Vista completa
+   CATEGORIES - Chips/Pills minimalistas
    ============================================ */
 .categories-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--space-md);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
 }
 
-.category-card {
+.category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
   background: var(--bg-card);
-  border: 2px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg) var(--space-md);
-  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
-.category-card:hover {
+.category-chip:hover {
   border-color: var(--coaj-accent);
-  background: rgba(232, 85, 42, 0.02);
-  transform: translateY(-2px);
+  background: rgba(232, 85, 42, 0.04);
 }
 
-.category-card:active {
-  transform: scale(0.98);
+.category-chip:active {
+  transform: scale(0.97);
 }
 
 .category-icon {
-  font-size: 2rem;
-  margin-bottom: var(--space-sm);
-  display: block;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .category-name {
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 0.8rem;
+  font-weight: 500;
   color: var(--text-primary);
-  margin-bottom: var(--space-xs);
 }
 
 .category-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--coaj-accent);
-  color: white;
   font-size: 0.7rem;
-  font-weight: 700;
-  padding: 2px 8px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-muted);
+  padding: 2px 6px;
   border-radius: var(--radius-full);
-  min-width: 24px;
+  min-width: 18px;
+  text-align: center;
 }
 
 /* ============================================
@@ -1351,10 +1349,6 @@ body {
    RESPONSIVE
    ============================================ */
 @media (max-width: 480px) {
-  .categories-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
   .activity-card {
     flex: 0 0 240px;
   }
@@ -1378,10 +1372,6 @@ body {
 }
 
 @media (min-width: 768px) {
-  .categories-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  
   .activities-list {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -1389,10 +1379,6 @@ body {
 }
 
 @media (min-width: 1024px) {
-  .categories-grid {
-    grid-template-columns: repeat(6, 1fr);
-  }
-  
   .activities-list {
     grid-template-columns: repeat(3, 1fr);
   }
