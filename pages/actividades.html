@@ -13,7 +13,7 @@
   <div class="login-overlay" id="loginModal">
     <div class="login-card">
       <div class="login-header">
-        <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1736820087/COAJ/isotipo-coaj.png" alt="COAJ" class="login-logo">
+        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRWVfLywCHUL6VGp9W6SGM0070iQltO3XPDzOY8xgRYv_u3cViYamOAtly__8yAWUXpP8nbI-UBpPnWKam3hV9P9JGg1RI0MvFZcaN_rv_TtBgqujx8ZjgvJq0Pjsqx6uHHP7M0ergfbXtOQWbcGVoHgoeKbS7bUbkC3GJvK0ZBx4daVLgpn9nDlYAx1qyk85mh4B6Pv6JjVFVHnt0_evLQQjOOtfMoKI2dXCus6u2FOk5qmb5luJZFxx-woLfGIhh7kwObe5o-XJF" alt="COAJ" class="login-logo">
         <h2>Bienvenido a COAJ</h2>
         <p>Accede para explorar actividades</p>
       </div>
@@ -48,15 +48,14 @@
     <header class="app-header">
       <div class="header-left">
         <a href="../index.html" class="header-logo">
-          <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1736820087/COAJ/isotipo-coaj.png" alt="COAJ">
+          <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRWVfLywCHUL6VGp9W6SGM0070iQltO3XPDzOY8xgRYv_u3cViYamOAtly__8yAWUXpP8nbI-UBpPnWKam3hV9P9JGg1RI0MvFZcaN_rv_TtBgqujx8ZjgvJq0Pjsqx6uHHP7M0ergfbXtOQWbcGVoHgoeKbS7bUbkC3GJvK0ZBx4daVLgpn9nDlYAx1qyk85mh4B6Pv6JjVFVHnt0_evLQQjOOtfMoKI2dXCus6u2FOk5qmb5luJZFxx-woLfGIhh7kwObe5o-XJF" alt="COAJ">
         </a>
         <div class="header-info">
           <span class="header-greeting" id="headerGreeting">¡Hola!</span>
-          <h1 class="header-title" id="headerTitle">Actividades</h1>
+          <h1 class="header-title">Actividades</h1>
         </div>
       </div>
       <div class="header-right">
-        <!-- Theme Toggle -->
         <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">
           <span class="material-symbols-outlined" id="themeIcon">dark_mode</span>
         </button>
@@ -68,7 +67,7 @@
           <span id="avatarInitial">U</span>
         </div>
       </div>
-      <!-- User Menu Dropdown -->
+      <!-- User Menu -->
       <div class="user-menu" id="userMenu">
         <div class="user-menu-header">
           <div class="user-menu-avatar"><span id="menuAvatarInitial">U</span></div>
@@ -86,10 +85,6 @@
           <span class="material-symbols-outlined">bookmark</span>
           Mis Inscripciones
         </a>
-        <a href="#" class="user-menu-item">
-          <span class="material-symbols-outlined">settings</span>
-          Configuración
-        </a>
         <button class="user-menu-item" onclick="toggleTheme()">
           <span class="material-symbols-outlined" id="menuThemeIcon">dark_mode</span>
           <span id="menuThemeText">Modo Oscuro</span>
@@ -102,20 +97,20 @@
       </div>
     </header>
 
-    <!-- MAIN CONTENT -->
+    <!-- MAIN -->
     <main class="app-main">
-      <!-- Search Bar -->
+      <!-- Search -->
       <div class="search-container">
         <div class="search-box">
           <span class="material-symbols-outlined">search</span>
-          <input type="text" id="searchInput" placeholder="Buscar actividades, talleres..." oninput="buscarActividades()">
+          <input type="text" id="searchInput" placeholder="Buscar actividades..." oninput="buscarActividades()">
         </div>
         <button class="filter-btn" onclick="toggleFiltros()">
           <span class="material-symbols-outlined">tune</span>
         </button>
       </div>
 
-      <!-- Filtros Panel -->
+      <!-- Filtros -->
       <div class="filtros-panel" id="filtrosPanel">
         <div class="filtros-header">
           <h3>Filtros</h3>
@@ -130,7 +125,7 @@
         <p>Cargando actividades...</p>
       </div>
 
-      <!-- Sección: Destacadas -->
+      <!-- Destacadas -->
       <section class="section hidden" id="seccionDestacadas">
         <div class="section-header">
           <h2>🔥 Destacadas</h2>
@@ -139,7 +134,7 @@
         <div class="carousel" id="carouselDestacadas"></div>
       </section>
 
-      <!-- Sección: Próximamente -->
+      <!-- Próximas -->
       <section class="section hidden" id="seccionProximas">
         <div class="section-header">
           <h2>📅 Próximamente</h2>
@@ -148,15 +143,15 @@
         <div class="carousel" id="carouselProximas"></div>
       </section>
 
-      <!-- Sección: Por Categoría -->
+      <!-- Categorías (Clases) -->
       <section class="section hidden" id="seccionCategorias">
         <div class="section-header">
-          <h2>🎯 Explorar por categoría</h2>
+          <h2>🎯 Por categoría</h2>
         </div>
         <div class="categories-grid" id="categoriasGrid"></div>
       </section>
 
-      <!-- Sección: Todas las Actividades -->
+      <!-- Todas -->
       <section class="section hidden" id="seccionTodas">
         <div class="section-header">
           <h2>📋 Todas las actividades</h2>
@@ -172,20 +167,20 @@
         <div class="activities-grid" id="actividadesGrid"></div>
       </section>
 
-      <!-- Empty State -->
+      <!-- Empty -->
       <div class="empty-state" id="emptyState">
         <span class="material-symbols-outlined">search_off</span>
         <h3>Sin resultados</h3>
-        <p>No encontramos actividades con esos criterios</p>
+        <p>No encontramos actividades</p>
         <button class="btn-primary" onclick="limpiarFiltros()">Limpiar filtros</button>
       </div>
     </main>
 
-    <!-- BOTTOM NAV - HOMOLOGADO CON INDEX -->
-    <nav class="bottom-nav" id="bottomNav">
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav">
       <div class="bottom-nav-container">
-        <!-- Sin login -->
-        <div id="bottomNavGuest">
+        <!-- Guest Nav -->
+        <div id="bottomNavGuest" class="bottom-nav-items">
           <a href="../index.html" class="bottom-nav-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             <span>Inicio</span>
@@ -204,8 +199,8 @@
           </button>
         </div>
 
-        <!-- Con login -->
-        <div id="bottomNavUser" style="display:none;">
+        <!-- User Nav (hidden by default) -->
+        <div id="bottomNavUser" class="bottom-nav-items" style="display: none;">
           <a href="../index.html" class="bottom-nav-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             <span>Inicio</span>
@@ -219,7 +214,7 @@
             <span>Actividades</span>
           </a>
           <div class="bottom-nav-user" onclick="toggleUserMenu()">
-            <div class="header-avatar user-avatar" id="bottomUserAvatar"><span id="bottomAvatarInitial">U</span></div>
+            <div class="user-avatar-small" id="bottomUserAvatar"><span id="bottomAvatarInitial">U</span></div>
             <span id="bottomUserName">Usuario</span>
           </div>
           <button class="bottom-nav-item" onclick="cerrarSesion()">
@@ -231,7 +226,7 @@
     </nav>
   </div>
 
-  <!-- MODAL DETALLE -->
+  <!-- MODAL -->
   <div class="modal-overlay" id="modalDetalle" onclick="cerrarModal(event)">
     <div class="modal-card" onclick="event.stopPropagation()">
       <button class="modal-close" onclick="cerrarModal()">
@@ -248,7 +243,7 @@
             <span class="material-symbols-outlined">share</span>
             Compartir
           </button>
-          <button class="btn-primary" id="btnInscribirse" onclick="inscribirse()">
+          <button class="btn-primary" id="btnInscribirse">
             <span class="material-symbols-outlined">how_to_reg</span>
             Inscribirme
           </button>
