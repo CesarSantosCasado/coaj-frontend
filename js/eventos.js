@@ -1,22 +1,24 @@
 /**
- * COAJ MADRID - EVENTOS
- * Con sesión compartida desde actividades
+ * COAJ Madrid - Eventos v5
+ * HOMOLOGADO 100% CON ACTIVIDADES
+ * Sesión compartida con actividades
  */
 
 // ============================================
-// Verificar config.js
+// VERIFICAR DEPENDENCIAS
 // ============================================
 if (typeof COAJ_CONFIG === 'undefined') {
-  console.error('❌ COAJ_CONFIG no definido');
+  console.error('❌ config.js debe cargarse antes de eventos.js');
 }
 
 // ============================================
-// Configuración
+// CONSTANTES
 // ============================================
-const API_BASE = COAJ_CONFIG?.api?.base || '';
+const API_BASE = COAJ_CONFIG?.api?.base || 'https://coajmadrid-8273afef0255.herokuapp.com/api';
 const CACHE_KEY = COAJ_CONFIG?.cache?.eventosKey || 'coaj_eventos_cache';
-const CACHE_TTL = COAJ_CONFIG?.cache?.ttl || 300000;
+const CACHE_TTL = COAJ_CONFIG?.cache?.ttl || 5 * 60 * 1000;
 
+// Iconos categorías
 const ICONOS = COAJ_CONFIG?.eventos?.icons || {
   'Formación': '📚',
   'Cultura': '🎭',
@@ -29,280 +31,278 @@ const ICONOS = COAJ_CONFIG?.eventos?.icons || {
   'default': '📅'
 };
 
-// CoajCache fallback
-if (typeof CoajCache === 'undefined') {
-  window.CoajCache = {
-    get: (key) => {
-      try {
-        const item = localStorage.getItem(key);
-        if (!item) return null;
-        const parsed = JSON.parse(item);
-        if (Date.now() > parsed.expiry) { localStorage.removeItem(key); return null; }
-        return parsed.data;
-      } catch { return null; }
-    },
-    set: (key, data, ttl = 300000) => {
-      try { localStorage.setItem(key, JSON.stringify({ data, expiry: Date.now() + ttl })); } catch {}
-    },
-    remove: (key) => localStorage.removeItem(key)
-  };
-}
-
 // ============================================
-// Estado Global
+// ESTADO GLOBAL
 // ============================================
 let eventos = [];
+let eventoSeleccionado = null;
+let categoriaSeleccionada = null;
 let vistaActual = 'tarjetas';
-let categoriaActual = 'todas';
-let centroActual = 'todos';
 let mesActual = new Date().getMonth();
 let añoActual = new Date().getFullYear();
-let diaSeleccionado = null;
 
 const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const diasSemana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 // ============================================
-// SESIÓN (compartida con actividades)
+// INICIALIZACIÓN
+// ============================================
+document.addEventListener('DOMContentLoaded', init);
+
+function init() {
+  console.log('🚀 Inicializando COAJ Eventos...');
+  initTheme();
+  verificarSesion();
+  warmup();
+  setupEventListeners();
+}
+
+function warmup() {
+  fetch(`${API_BASE}/warmup`).catch(() => {});
+}
+
+function setupEventListeners() {
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('userMenu');
+    const avatar = document.getElementById('headerAvatar');
+    if (menu?.classList.contains('active') && !menu.contains(e.target) && !avatar?.contains(e.target)) {
+      menu.classList.remove('active');
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      cerrarModalDetalle();
+      cerrarModalCategoria();
+      document.getElementById('userMenu')?.classList.remove('active');
+    }
+  });
+}
+
+// ============================================
+// TEMA CLARO/OSCURO
+// ============================================
+function initTheme() {
+  const saved = localStorage.getItem(COAJ_CONFIG?.cache?.themeKey || 'coajTheme') || 'light';
+  setTheme(saved);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  setTheme(next);
+  localStorage.setItem(COAJ_CONFIG?.cache?.themeKey || 'coajTheme', next);
+}
+
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const isDark = theme === 'dark';
+  
+  const updates = {
+    themeIcon: isDark ? 'light_mode' : 'dark_mode',
+    menuThemeIcon: isDark ? 'light_mode' : 'dark_mode',
+    menuThemeText: isDark ? 'Modo Claro' : 'Modo Oscuro'
+  };
+  
+  Object.entries(updates).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  });
+}
+
+// ============================================
+// AUTENTICACIÓN (Sesión compartida)
 // ============================================
 function verificarSesion() {
-  const sesion = localStorage.getItem('coaj_sesion');
-  console.log('🔐 Verificando sesión:', sesion ? 'encontrada' : 'no encontrada');
+  const sesion = localStorage.getItem(COAJ_CONFIG?.cache?.userKey || 'coajUsuario');
+  const loginModal = document.getElementById('loginModal');
   
   if (sesion) {
-    try {
-      const usuario = JSON.parse(sesion);
-      actualizarUIUsuario(usuario);
-      ocultarLoginModal();
-      cargarEventos();
-    } catch (e) {
-      console.error('Error parseando sesión:', e);
-      mostrarLoginModal();
-    }
+    const usuario = JSON.parse(sesion);
+    loginModal?.classList.add('hidden');
+    actualizarUIUsuario(usuario);
+    actualizarBottomNav(true);
+    cargarDatos();
   } else {
-    mostrarLoginModal();
+    loginModal?.classList.remove('hidden');
+    actualizarBottomNav(false);
   }
 }
 
 function actualizarUIUsuario(usuario) {
   const nombre = usuario.nombre || usuario.alias || 'Usuario';
   const inicial = nombre.charAt(0).toUpperCase();
+  const primerNombre = nombre.split(' ')[0];
   
-  const headerGreeting = document.getElementById('headerGreeting');
-  const avatarInitial = document.getElementById('avatarInitial');
-  const menuAvatarInitial = document.getElementById('menuAvatarInitial');
-  const menuUserName = document.getElementById('menuUserName');
-  const bottomNavGuest = document.getElementById('bottomNavGuest');
-  const bottomNavUser = document.getElementById('bottomNavUser');
+  const updates = {
+    headerGreeting: `¡Hola, ${primerNombre}!`,
+    avatarInitial: inicial,
+    menuAvatarInitial: inicial,
+    menuUserName: nombre
+  };
   
-  if (headerGreeting) headerGreeting.textContent = `Hola, ${nombre}`;
-  if (avatarInitial) avatarInitial.textContent = inicial;
-  if (menuAvatarInitial) menuAvatarInitial.textContent = inicial;
-  if (menuUserName) menuUserName.textContent = nombre;
-  if (bottomNavGuest) bottomNavGuest.style.display = 'none';
-  if (bottomNavUser) bottomNavUser.style.display = 'flex';
+  Object.entries(updates).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  });
 }
 
-function entrarComoInvitado() {
-  const invitado = { tipo: 'invitado', nombre: 'Invitado' };
-  localStorage.setItem('coaj_sesion', JSON.stringify(invitado));
-  actualizarUIUsuario(invitado);
-  ocultarLoginModal();
-  cargarEventos();
+function actualizarBottomNav(logueado) {
+  const navGuest = document.getElementById('bottomNavGuest');
+  const navUser = document.getElementById('bottomNavUser');
+  
+  if (navGuest) navGuest.style.display = logueado ? 'none' : 'flex';
+  if (navUser) navUser.style.display = logueado ? 'flex' : 'none';
+}
+
+function toggleUserMenu() {
+  document.getElementById('userMenu')?.classList.toggle('active');
+}
+
+function mostrarLoginModal() {
+  document.getElementById('loginModal')?.classList.remove('hidden');
 }
 
 async function iniciarSesion(e) {
   e.preventDefault();
   
-  const aliasEl = document.getElementById('alias');
-  const contrasenaEl = document.getElementById('contrasena');
+  const alias = document.getElementById('alias')?.value.trim();
+  const contrasena = document.getElementById('contrasena')?.value;
+  const btn = document.querySelector('.btn-login');
   const errorEl = document.getElementById('loginError');
-  const btnLogin = document.querySelector('.btn-login');
-  
-  const alias = aliasEl?.value?.trim();
-  const contrasena = contrasenaEl?.value;
   
   if (!alias || !contrasena) {
-    if (errorEl) { errorEl.textContent = 'Completa todos los campos'; errorEl.style.display = 'block'; }
+    mostrarErrorLogin('Por favor completa todos los campos');
     return;
   }
   
-  if (btnLogin) { btnLogin.disabled = true; btnLogin.innerHTML = '⏳ Verificando...'; }
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Verificando...';
+  }
+  if (errorEl) errorEl.style.display = 'none';
   
   try {
-    const response = await fetch(`${API_BASE}/login`, {
+    const res = await fetch(`${API_BASE}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ alias, contrasena })
     });
     
-    const data = await response.json();
+    const data = await res.json();
     
-    if (data.success && data.usuario) {
-      localStorage.setItem('coaj_sesion', JSON.stringify(data.usuario));
+    if (data.success) {
+      localStorage.setItem(COAJ_CONFIG?.cache?.userKey || 'coajUsuario', JSON.stringify(data.usuario));
+      document.getElementById('loginModal')?.classList.add('hidden');
       actualizarUIUsuario(data.usuario);
-      ocultarLoginModal();
-      cargarEventos();
-      mostrarToast(`Bienvenido, ${data.usuario.nombre || alias}`, 'success');
+      actualizarBottomNav(true);
+      cargarDatos();
+      mostrarToast('¡Bienvenido!', 'success');
     } else {
-      if (errorEl) { errorEl.textContent = data.error || 'Credenciales incorrectas'; errorEl.style.display = 'block'; }
+      mostrarErrorLogin(data.message || 'Credenciales incorrectas');
     }
-  } catch (error) {
-    console.error('Error login:', error);
-    if (errorEl) { errorEl.textContent = 'Error de conexión'; errorEl.style.display = 'block'; }
-  } finally {
-    if (btnLogin) { btnLogin.disabled = false; btnLogin.innerHTML = '🔐 Iniciar Sesión'; }
+  } catch (err) {
+    mostrarErrorLogin('Error de conexión. Intenta de nuevo.');
+  }
+  
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined">login</span> Iniciar Sesión';
+  }
+}
+
+function entrarComoInvitado() {
+  const usuario = { alias: 'invitado', nombre: 'Invitado' };
+  localStorage.setItem(COAJ_CONFIG?.cache?.userKey || 'coajUsuario', JSON.stringify(usuario));
+  document.getElementById('loginModal')?.classList.add('hidden');
+  actualizarUIUsuario(usuario);
+  actualizarBottomNav(true);
+  cargarDatos();
+}
+
+function mostrarErrorLogin(mensaje) {
+  const el = document.getElementById('loginError');
+  if (el) {
+    el.textContent = mensaje;
+    el.style.display = 'block';
   }
 }
 
 function cerrarSesion() {
-  localStorage.removeItem('coaj_sesion');
-  
-  const bottomNavGuest = document.getElementById('bottomNavGuest');
-  const bottomNavUser = document.getElementById('bottomNavUser');
-  const headerGreeting = document.getElementById('headerGreeting');
-  const avatarInitial = document.getElementById('avatarInitial');
-  
-  if (bottomNavGuest) bottomNavGuest.style.display = 'flex';
-  if (bottomNavUser) bottomNavUser.style.display = 'none';
-  if (headerGreeting) headerGreeting.textContent = 'Bienvenido';
-  if (avatarInitial) avatarInitial.textContent = 'U';
-  
-  cerrarUserMenu();
-  mostrarLoginModal();
-}
-
-function mostrarLoginModal() {
-  const modal = document.getElementById('loginModal');
-  if (modal) modal.classList.remove('hidden');
-}
-
-function ocultarLoginModal() {
-  const modal = document.getElementById('loginModal');
-  if (modal) modal.classList.add('hidden');
+  localStorage.removeItem(COAJ_CONFIG?.cache?.userKey || 'coajUsuario');
+  if (typeof CoajCache !== 'undefined') {
+    CoajCache.remove(CACHE_KEY);
+  }
+  window.location.href = '../index.html';
 }
 
 // ============================================
-// USER MENU
+// CARGAR DATOS
 // ============================================
-function toggleUserMenu() {
-  const menu = document.getElementById('userMenu');
-  if (menu) menu.classList.toggle('active');
-}
-
-function cerrarUserMenu() {
-  const menu = document.getElementById('userMenu');
-  if (menu) menu.classList.remove('active');
-}
-
-// ============================================
-// TEMA
-// ============================================
-function toggleTheme() {
-  const html = document.documentElement;
-  const current = html.getAttribute('data-theme') || 'light';
-  const next = current === 'light' ? 'dark' : 'light';
+async function cargarDatos(forceRefresh = false) {
+  const loading = document.getElementById('loading');
   
-  html.setAttribute('data-theme', next);
-  localStorage.setItem('coaj_theme', next);
-  
-  const icon = next === 'dark' ? 'light_mode' : 'dark_mode';
-  const text = next === 'dark' ? 'Modo Claro' : 'Modo Oscuro';
-  
-  const themeIcon = document.getElementById('themeIcon');
-  const menuThemeIcon = document.getElementById('menuThemeIcon');
-  const menuThemeText = document.getElementById('menuThemeText');
-  
-  if (themeIcon) themeIcon.textContent = icon;
-  if (menuThemeIcon) menuThemeIcon.textContent = icon;
-  if (menuThemeText) menuThemeText.textContent = text;
-}
-
-function cargarTema() {
-  const tema = localStorage.getItem('coaj_theme') || 'light';
-  document.documentElement.setAttribute('data-theme', tema);
-  
-  const icon = tema === 'dark' ? 'light_mode' : 'dark_mode';
-  const text = tema === 'dark' ? 'Modo Claro' : 'Modo Oscuro';
-  
-  const themeIcon = document.getElementById('themeIcon');
-  const menuThemeIcon = document.getElementById('menuThemeIcon');
-  const menuThemeText = document.getElementById('menuThemeText');
-  
-  if (themeIcon) themeIcon.textContent = icon;
-  if (menuThemeIcon) menuThemeIcon.textContent = icon;
-  if (menuThemeText) menuThemeText.textContent = text;
-}
-
-// ============================================
-// CARGAR EVENTOS
-// ============================================
-async function cargarEventos(forceRefresh = false) {
-  console.log('📅 cargarEventos()', forceRefresh ? '(forzado)' : '');
-  
-  if (!forceRefresh) {
-    const cached = CoajCache.get(CACHE_KEY);
+  // Cache
+  if (!forceRefresh && typeof CoajCache !== 'undefined') {
+    const cached = CoajCache.get(CACHE_KEY, CACHE_TTL);
     if (cached) {
-      console.log('📦 Usando cache');
+      console.log('📦 Usando eventos desde cache');
       eventos = cached;
-      generarFiltros(eventos);
-      generarFiltrosCentros(eventos);
-      render(eventos);
-      actualizarFecha();
+      if (loading) loading.classList.add('hidden');
+      if (eventos.length === 0) {
+        document.getElementById('emptyState')?.classList.add('active');
+      } else {
+        renderizarTodo();
+      }
       return;
     }
   }
-  
-  mostrarLoading(true);
+
+  console.log('🌐 Cargando eventos desde API...');
+  if (loading) loading.classList.remove('hidden');
   
   try {
-    const response = await fetch(`${API_BASE}/eventos`);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const res = await fetch(`${API_BASE}/eventos`);
+    const data = await res.json();
     
-    const data = await response.json();
+    eventos = data.eventos || [];
+    eventos = filtrarEventosFinalizados(eventos);
+    eventos = ordenarEventosPorFecha(eventos);
     
-    if (data.eventos && Array.isArray(data.eventos)) {
-      eventos = filtrarEventosFinalizados(data.eventos);
-      eventos = ordenarEventosPorFecha(eventos);
-      console.log(`✅ ${eventos.length} eventos`);
-      
-      CoajCache.set(CACHE_KEY, eventos, CACHE_TTL);
-      generarFiltros(eventos);
-      generarFiltrosCentros(eventos);
-      render(eventos);
-      actualizarFecha();
-    } else {
-      eventos = [];
-      render(eventos);
+    console.log('✅ Eventos cargados:', eventos.length);
+    
+    if (typeof CoajCache !== 'undefined') {
+      CoajCache.set(CACHE_KEY, eventos);
     }
-  } catch (error) {
-    console.error('❌ Error:', error);
-    mostrarLoading(false);
-    mostrarEmpty(true);
+    
+    if (loading) loading.classList.add('hidden');
+    
+    if (eventos.length === 0) {
+      document.getElementById('emptyState')?.classList.add('active');
+    } else {
+      renderizarTodo();
+    }
+  } catch (err) {
+    console.error('Error cargando eventos:', err);
+    if (loading) loading.classList.add('hidden');
+    document.getElementById('emptyState')?.classList.add('active');
     mostrarToast('Error al cargar eventos', 'error');
   }
 }
 
-function refrescarEventos() {
-  CoajCache.remove(CACHE_KEY);
-  categoriaActual = 'todas';
-  centroActual = 'todos';
-  cargarEventos(true);
-  mostrarToast('Actualizando...', 'success');
+function refrescarDatos() {
+  console.log('🔄 Refrescando eventos...');
+  if (typeof CoajCache !== 'undefined') {
+    CoajCache.remove(CACHE_KEY);
+  }
+  cargarDatos(true);
+  mostrarToast('Actualizando eventos...', 'success');
 }
 
-function mostrarLoading(show) {
-  const el = document.getElementById('loading');
-  if (el) el.style.display = show ? 'block' : 'none';
-}
-
-function mostrarEmpty(show) {
-  const el = document.getElementById('empty');
-  if (el) el.style.display = show ? 'block' : 'none';
-}
+window.refrescarDatos = refrescarDatos;
 
 // ============================================
-// UTILIDADES FECHA
+// UTILIDADES
 // ============================================
 function filtrarEventosFinalizados(evts) {
   const hoy = new Date();
@@ -318,7 +318,7 @@ function ordenarEventosPorFecha(evts) {
   return evts.sort((a, b) => {
     const fA = parsearFecha(a["Fecha inicio"]) || new Date(0);
     const fB = parsearFecha(b["Fecha inicio"]) || new Date(0);
-    return fB - fA;
+    return fA - fB;
   });
 }
 
@@ -336,34 +336,22 @@ function parsearFecha(str) {
 
 function formatearFecha(str) {
   if (!str) return 'Por confirmar';
-  try {
-    if (str.includes('/')) {
-      const p = str.split(' ');
-      const f = p[0].split('/');
-      const d = new Date(+f[2], +f[0] - 1, +f[1]);
-      let r = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-      if (p[1]) r += ' • ' + p[1].substring(0, 5);
-      return r;
-    }
-    return str;
-  } catch { return str; }
+  const fecha = parsearFecha(str);
+  if (!fecha) return str;
+  return fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function formatearFechaCorta(str) {
   if (!str) return 'Por confirmar';
-  try {
-    if (str.includes('/')) {
-      const f = str.split(' ')[0].split('/');
-      return new Date(2024, +f[0] - 1, +f[1]).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-    }
-    return str;
-  } catch { return str; }
+  const fecha = parsearFecha(str);
+  if (!fecha) return str;
+  return fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 }
 
 function calcularEstado(ev) {
   const inicio = parsearFecha(ev["Fecha inicio"]);
   const fin = parsearFecha(ev["Fecha finalización"]);
-  if (!inicio) return null;
+  if (!inicio) return 'programado';
   
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
@@ -374,304 +362,259 @@ function calcularEstado(ev) {
   const diffI = Math.floor((i - hoy) / 86400000);
   const diffF = Math.floor((f - hoy) / 86400000);
   
-  if (diffI > 5) return 'Programado';
-  if (diffI <= 5 && diffF >= 0) return 'Desarrollo';
-  if (diffF < 0) return 'Finalizado';
-  return 'Programado';
+  if (diffF < 0) return 'finalizado';
+  if (diffI <= 0 && diffF >= 0) return 'desarrollo';
+  return 'programado';
 }
 
-function extraerImg(url) {
-  if (!url) return null;
+function getEstadoTexto(estado) {
+  const map = {
+    'desarrollo': 'En curso',
+    'finalizado': 'Finalizado',
+    'programado': 'Próximo'
+  };
+  return map[estado] || 'Próximo';
+}
+
+function getIconoCategoria(cat) {
+  return ICONOS[cat] || ICONOS.default;
+}
+
+function getImagenEvento(ev) {
+  const url = ev["Imagen URL"] || ev.Cartel;
+  if (!url) return 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400';
   if (url.includes('gettablefileurl')) {
     const p = new URLSearchParams(url.split('?')[1] || '');
-    if (!p.get('fileName')?.trim()) return null;
+    if (!p.get('fileName')?.trim()) return 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400';
   }
   return url;
 }
 
 // ============================================
-// FILTROS
+// RENDERIZADO
 // ============================================
-function agrupar(evts) {
-  const g = {};
-  evts.forEach(ev => {
-    const c = ev.Categoría || ev.Categoria || 'Sin Categoría';
-    if (!g[c]) g[c] = [];
-    g[c].push(ev);
-  });
-  return g;
-}
-
-function filtrarEventos(evts) {
-  let r = evts;
-  if (categoriaActual !== 'todas') {
-    r = r.filter(ev => (ev.Categoría || ev.Categoria || 'Sin Categoría') === categoriaActual);
-  }
-  if (centroActual !== 'todos') {
-    r = r.filter(ev => ev["Centro Juvenil"] === centroActual);
-  }
-  return r;
-}
-
-function generarFiltros(evts) {
-  const c = document.getElementById('filtros');
-  if (!c) return;
-  c.innerHTML = '';
+function renderizarTodo() {
+  renderizarProximos();
+  renderizarCategorias();
+  renderizarCentros();
+  renderizarTodosLosEventos();
+  renderizarCalendario();
   
-  const btn = document.createElement('button');
-  btn.className = 'filtro-btn active';
-  btn.setAttribute('data-categoria', 'todas');
-  btn.innerHTML = `📌 Todas (${evts.length})`;
-  btn.onclick = () => filtrarCategoria('todas');
-  c.appendChild(btn);
-  
-  const g = agrupar(evts);
-  Object.keys(g).sort().forEach(cat => {
-    const b = document.createElement('button');
-    b.className = 'filtro-btn';
-    b.setAttribute('data-categoria', cat);
-    b.innerHTML = `${ICONOS[cat] || ICONOS.default} ${cat} (${g[cat].length})`;
-    b.onclick = () => filtrarCategoria(cat);
-    c.appendChild(b);
+  ['upcomingSection', 'categoriesSection', 'centrosSection', 'allEventsSection'].forEach(id => {
+    document.getElementById(id)?.classList.remove('hidden');
   });
 }
 
-function generarFiltrosCentros(evts) {
-  const c = document.getElementById('filtrosCentros');
-  if (!c) return;
-  c.innerHTML = '';
+// Próximos eventos (carousel)
+function renderizarProximos() {
+  const container = document.getElementById('upcomingCarousel');
+  if (!container) return;
   
-  const set = new Set();
-  evts.forEach(ev => {
-    const centro = ev["Centro Juvenil"];
-    if (centro?.trim()) set.add(centro.trim());
-  });
+  const proximos = eventos.filter(ev => calcularEstado(ev) !== 'finalizado').slice(0, 10);
   
-  if (set.size === 0) { c.style.display = 'none'; return; }
-  c.style.display = 'flex';
-  
-  const btn = document.createElement('button');
-  btn.className = 'filtro-centro-btn active';
-  btn.setAttribute('data-centro', 'todos');
-  btn.innerHTML = `🏢 Todos (${evts.length})`;
-  btn.onclick = () => filtrarCentro('todos');
-  c.appendChild(btn);
-  
-  Array.from(set).sort().forEach(centro => {
-    const count = evts.filter(ev => ev["Centro Juvenil"] === centro).length;
-    const b = document.createElement('button');
-    b.className = 'filtro-centro-btn';
-    b.setAttribute('data-centro', centro);
-    b.innerHTML = `📍 ${centro} (${count})`;
-    b.onclick = () => filtrarCentro(centro);
-    c.appendChild(b);
-  });
+  container.innerHTML = proximos.map((ev, i) => {
+    const estado = calcularEstado(ev);
+    const badgeText = estado === 'desarrollo' ? 'Hoy' : i < 2 ? 'Pronto' : 'Próximo';
+    const badgeClass = estado === 'desarrollo' ? 'badge-today' : i < 2 ? 'badge-tomorrow' : 'badge-upcoming';
+    
+    return `
+      <article class="event-card" onclick="abrirModalDetalle('${ev['ID Eventos'] || ev.Evento}')">
+        <div class="event-card-image" style="background-image: url('${getImagenEvento(ev)}')">
+          <span class="event-card-badge ${badgeClass}">${badgeText}</span>
+        </div>
+        <div class="event-card-body">
+          <h3 class="event-card-title">${ev.Evento || 'Sin título'}</h3>
+          <div class="event-card-meta">
+            <div class="event-card-meta-item">
+              <span class="material-symbols-outlined">event</span>
+              ${formatearFechaCorta(ev["Fecha inicio"])}
+            </div>
+            <div class="event-card-meta-item">
+              <span class="material-symbols-outlined">location_on</span>
+              ${ev['Centro Juvenil'] || 'COAJ Madrid'}
+            </div>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join('');
 }
 
-function filtrarCategoria(cat) {
-  categoriaActual = cat;
-  document.querySelectorAll('.filtro-btn').forEach(b => {
-    b.classList.toggle('active', b.getAttribute('data-categoria') === cat);
-  });
-  cerrarEventosDia();
-  render(eventos);
-}
-
-function filtrarCentro(centro) {
-  centroActual = centro;
-  document.querySelectorAll('.filtro-centro-btn').forEach(b => {
-    b.classList.toggle('active', b.getAttribute('data-centro') === centro);
-  });
-  cerrarEventosDia();
-  render(eventos);
-}
-
-// ============================================
-// RENDER
-// ============================================
-function render(evts) {
-  const filtered = filtrarEventos(evts);
+// Categorías (chips)
+function renderizarCategorias() {
+  const container = document.getElementById('categoriesGrid');
+  if (!container) return;
   
-  if (!filtered.length) {
-    mostrarLoading(false);
-    mostrarEmpty(true);
-    const vt = document.getElementById('vistaTarjetas');
-    const vc = document.getElementById('vistaCalendario');
-    if (vt) vt.innerHTML = '';
-    if (vc) vc.innerHTML = '';
+  const categorias = {};
+  eventos.forEach(ev => {
+    const cat = ev.Categoría || ev.Categoria || 'Otros';
+    categorias[cat] = (categorias[cat] || 0) + 1;
+  });
+  
+  const sorted = Object.entries(categorias).sort((a, b) => b[1] - a[1]);
+  
+  container.innerHTML = sorted.map(([cat, count]) => `
+    <button class="category-chip" onclick="abrirModalCategoria('${cat}', 'categoria')">
+      <span class="category-icon">${getIconoCategoria(cat)}</span>
+      <span class="category-name">${cat}</span>
+      <span class="category-count">${count}</span>
+    </button>
+  `).join('');
+}
+
+// Centros (chips)
+function renderizarCentros() {
+  const container = document.getElementById('centrosGrid');
+  if (!container) return;
+  
+  const centros = {};
+  eventos.forEach(ev => {
+    const centro = ev['Centro Juvenil'];
+    if (centro?.trim()) {
+      centros[centro] = (centros[centro] || 0) + 1;
+    }
+  });
+  
+  if (Object.keys(centros).length === 0) {
+    document.getElementById('centrosSection')?.classList.add('hidden');
     return;
   }
   
-  mostrarLoading(false);
-  mostrarEmpty(false);
+  const sorted = Object.entries(centros).sort((a, b) => b[1] - a[1]);
   
-  if (vistaActual === 'tarjetas') renderTarjetas(filtered);
-  else renderCalendario(evts);
+  container.innerHTML = sorted.map(([centro, count]) => `
+    <button class="category-chip" onclick="abrirModalCategoria('${centro}', 'centro')">
+      <span class="category-icon">🏢</span>
+      <span class="category-name">${centro}</span>
+      <span class="category-count">${count}</span>
+    </button>
+  `).join('');
 }
 
-function crearCard(ev) {
-  const nombre = ev.Evento || ev["ID Eventos"] || 'Sin nombre';
-  const fecha = formatearFechaCorta(ev["Fecha inicio"]);
-  const centro = ev["Centro Juvenil"] || 'Sin centro';
+// Todos los eventos (lista)
+function renderizarTodosLosEventos() {
+  const container = document.getElementById('allEventsList');
+  const countEl = document.getElementById('totalCount');
+  
+  if (!container) return;
+  if (countEl) countEl.textContent = `${eventos.length} eventos`;
+  
+  container.innerHTML = eventos.map(ev => crearItemLista(ev)).join('');
+}
+
+function crearItemLista(ev) {
+  const img = getImagenEvento(ev);
   const estado = calcularEstado(ev);
-  const img = extraerImg(ev["Imagen URL"]) || extraerImg(ev.Cartel) || 'https://placehold.co/600x400/032845/ffffff?text=COAJ';
-
-  let badge = '';
-  if (estado === 'Desarrollo') badge = '<span class="badge badge-desarrollo">En curso</span>';
-  else if (estado === 'Finalizado') badge = '<span class="badge badge-finalizado">Finalizado</span>';
-  else if (estado === 'Programado') badge = '<span class="badge badge-programado">Próximo</span>';
-
-  const card = document.createElement('div');
-  card.className = 'evento-card';
-  card.innerHTML = `
-    <img class="evento-img" src="${img}" alt="${nombre}" onerror="this.src='https://placehold.co/600x400/032845/ffffff?text=COAJ'">
-    <div class="evento-content">
-      <div class="evento-nombre">${nombre}</div>
-      <div class="evento-info">
-        ${badge}
-        <div class="info-item"><div class="info-icon">📅</div><div class="info-text">${fecha}</div></div>
-        <div class="info-item"><div class="info-icon">🏢</div><div class="info-text">${centro}</div></div>
+  const id = ev['ID Eventos'] || ev.Evento;
+  
+  return `
+    <article class="event-list-item" onclick="abrirModalDetalle('${id}')">
+      <div class="event-list-image" style="background-image: url('${img}')"></div>
+      <div class="event-list-content">
+        <h3 class="event-list-title">${ev.Evento || 'Sin título'}</h3>
+        <div class="event-list-badges">
+          <span class="status-badge status-${estado}">${getEstadoTexto(estado)}</span>
+        </div>
+        <div class="event-list-info">
+          <span class="event-list-info-item">
+            <span class="material-symbols-outlined">event</span>
+            ${formatearFechaCorta(ev["Fecha inicio"])}
+          </span>
+          <span class="event-list-info-item">
+            <span class="material-symbols-outlined">location_on</span>
+            ${ev['Centro Juvenil'] || 'COAJ'}
+          </span>
+          <span class="event-list-info-item">
+            <span class="material-symbols-outlined">group</span>
+            ${ev.Plazas || '∞'}
+          </span>
+        </div>
       </div>
-      <button class="btn-ver-mas">Ver más</button>
-    </div>
+      <span class="material-symbols-outlined event-list-arrow">chevron_right</span>
+    </article>
   `;
-  card.querySelector('.btn-ver-mas').onclick = () => abrirModal(ev);
-  return card;
-}
-
-function renderTarjetas(evts) {
-  const c = document.getElementById('vistaTarjetas');
-  if (!c) return;
-  c.innerHTML = '';
-  
-  const g = agrupar(evts);
-  
-  if (categoriaActual !== 'todas') {
-    const items = g[categoriaActual] || [];
-    const grid = document.createElement('div');
-    grid.className = 'eventos-grid';
-    items.forEach(i => grid.appendChild(crearCard(i)));
-    c.appendChild(grid);
-  } else {
-    Object.keys(g).sort().forEach(cat => {
-      const items = g[cat];
-      const banner = document.createElement('div');
-      banner.className = 'category-banner';
-      banner.innerHTML = `<div class="category-content"><div class="category-info"><div class="category-icon">${ICONOS[cat] || ICONOS.default}</div><div class="category-title">${cat}</div></div><div class="category-count">${items.length}</div></div>`;
-      c.appendChild(banner);
-      
-      const grid = document.createElement('div');
-      grid.className = 'eventos-grid';
-      items.forEach(i => grid.appendChild(crearCard(i)));
-      c.appendChild(grid);
-    });
-  }
 }
 
 // ============================================
 // CALENDARIO
 // ============================================
-function renderCalendario(evts) {
-  const c = document.getElementById('vistaCalendario');
-  if (c) c.innerHTML = generarCalendario(evts);
-}
-
-function generarCalendario(evts) {
-  const filtered = filtrarEventos(evts);
-  const primer = new Date(añoActual, mesActual, 1);
-  const ultimo = new Date(añoActual, mesActual + 1, 0);
-  const dias = ultimo.getDate();
-  const primerDia = (primer.getDay() + 6) % 7;
+function renderizarCalendario() {
+  const container = document.getElementById('calendarioContainer');
+  if (!container) return;
+  
+  const primerDia = new Date(añoActual, mesActual, 1);
+  const ultimoDia = new Date(añoActual, mesActual + 1, 0);
+  const diasEnMes = ultimoDia.getDate();
+  const primerDiaSemana = (primerDia.getDay() + 6) % 7;
   const hoy = new Date();
   
-  let html = `<div class="calendario-container">
+  let html = `
     <div class="calendario-header">
       <div class="calendario-nav">
-        <button class="btn-nav" onclick="cambiarMes(-1)">←</button>
-        <div class="mes-actual">${mesesNombres[mesActual]} ${añoActual}</div>
-        <button class="btn-nav" onclick="cambiarMes(1)">→</button>
+        <button onclick="cambiarMes(-1)">←</button>
+        <span class="calendario-mes">${mesesNombres[mesActual]} ${añoActual}</span>
+        <button onclick="cambiarMes(1)">→</button>
       </div>
       <button class="btn-hoy" onclick="irHoy()">Hoy</button>
     </div>
-    <div class="calendario-grid">`;
+    <div class="calendario-grid">
+  `;
   
-  diasSemana.forEach(d => html += `<div class="dia-semana">${d}</div>`);
+  diasSemana.forEach(d => html += `<div class="calendario-dia-semana">${d}</div>`);
   
-  for (let i = 0; i < primerDia; i++) {
-    const d = new Date(añoActual, mesActual, -(primerDia - i - 1));
-    html += `<div class="dia-celda otro-mes"><div class="dia-numero">${d.getDate()}</div></div>`;
+  // Días del mes anterior
+  for (let i = 0; i < primerDiaSemana; i++) {
+    const d = new Date(añoActual, mesActual, -(primerDiaSemana - i - 1));
+    html += `<div class="calendario-dia otro-mes"><span class="calendario-dia-numero">${d.getDate()}</span></div>`;
   }
   
-  for (let dia = 1; dia <= dias; dia++) {
-    const evsDia = filtered.filter(ev => {
-      const fi = parsearFecha(ev["Fecha inicio"]);
-      const ff = parsearFecha(ev["Fecha finalización"]);
-      if (!fi) return false;
-      const fd = new Date(añoActual, mesActual, dia); fd.setHours(0,0,0,0);
-      const i = new Date(fi); i.setHours(0,0,0,0);
-      if (ff) { const f = new Date(ff); f.setHours(0,0,0,0); return fd >= i && fd <= f; }
-      return fd.getTime() === i.getTime();
-    });
+  // Días del mes actual
+  for (let dia = 1; dia <= diasEnMes; dia++) {
+    const eventosDia = getEventosDia(dia);
+    let clases = 'calendario-dia';
     
-    let cls = 'dia-celda';
-    if (hoy.getDate() === dia && hoy.getMonth() === mesActual && hoy.getFullYear() === añoActual) cls += ' hoy';
-    if (evsDia.length) cls += ' con-eventos';
+    if (hoy.getDate() === dia && hoy.getMonth() === mesActual && hoy.getFullYear() === añoActual) {
+      clases += ' hoy';
+    }
+    if (eventosDia.length > 0) {
+      clases += ' con-eventos';
+    }
     
-    html += `<div class="${cls}" onclick="verEventosDia(${dia})">
-      <div class="dia-numero">${dia}</div>
-      ${evsDia.length ? `<div class="dia-contador">${evsDia.length}</div>` : ''}
-    </div>`;
+    html += `
+      <div class="${clases}" onclick="verEventosDia(${dia})">
+        <span class="calendario-dia-numero">${dia}</span>
+        ${eventosDia.length > 0 ? `<span class="calendario-dia-contador">${eventosDia.length}</span>` : ''}
+      </div>
+    `;
   }
   
-  const rest = (7 - ((primerDia + dias) % 7)) % 7;
-  for (let i = 1; i <= rest; i++) {
-    html += `<div class="dia-celda otro-mes"><div class="dia-numero">${i}</div></div>`;
+  // Días del mes siguiente
+  const diasRestantes = (7 - ((primerDiaSemana + diasEnMes) % 7)) % 7;
+  for (let i = 1; i <= diasRestantes; i++) {
+    html += `<div class="calendario-dia otro-mes"><span class="calendario-dia-numero">${i}</span></div>`;
   }
   
-  return html + '</div></div>';
+  html += '</div>';
+  container.innerHTML = html;
 }
 
-function verEventosDia(dia) {
-  diaSeleccionado = dia;
-  const filtered = filtrarEventos(eventos);
-  
-  const evsDia = filtered.filter(ev => {
+function getEventosDia(dia) {
+  return eventos.filter(ev => {
     const fi = parsearFecha(ev["Fecha inicio"]);
     const ff = parsearFecha(ev["Fecha finalización"]);
     if (!fi) return false;
-    const fd = new Date(añoActual, mesActual, dia); fd.setHours(0,0,0,0);
-    const i = new Date(fi); i.setHours(0,0,0,0);
-    if (ff) { const f = new Date(ff); f.setHours(0,0,0,0); return fd >= i && fd <= f; }
-    return fd.getTime() === i.getTime();
+    
+    const fechaDia = new Date(añoActual, mesActual, dia);
+    fechaDia.setHours(0,0,0,0);
+    
+    const inicio = new Date(fi); inicio.setHours(0,0,0,0);
+    
+    if (ff) {
+      const fin = new Date(ff); fin.setHours(0,0,0,0);
+      return fechaDia >= inicio && fechaDia <= fin;
+    }
+    return fechaDia.getTime() === inicio.getTime();
   });
-  
-  if (!evsDia.length) return;
-  
-  const c = document.getElementById('vistaCalendario');
-  document.getElementById('eventosDia')?.remove();
-  
-  const fecha = new Date(añoActual, mesActual, dia).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-  
-  const div = document.createElement('div');
-  div.className = 'eventos-dia-container';
-  div.id = 'eventosDia';
-  div.innerHTML = `
-    <div class="eventos-dia-header">
-      <div class="eventos-dia-titulo">📅 ${fecha} (${evsDia.length})</div>
-      <button class="btn-cerrar-dia" onclick="cerrarEventosDia()">✕</button>
-    </div>
-    <div class="eventos-dia-body"><div class="eventos-grid" id="gridEventosDia"></div></div>
-  `;
-  c.appendChild(div);
-  
-  const grid = document.getElementById('gridEventosDia');
-  evsDia.forEach(ev => grid.appendChild(crearCard(ev)));
-  div.scrollIntoView({ behavior: 'smooth' });
-}
-
-function cerrarEventosDia() {
-  document.getElementById('eventosDia')?.remove();
-  diaSeleccionado = null;
 }
 
 function cambiarMes(dir) {
@@ -679,15 +622,35 @@ function cambiarMes(dir) {
   if (mesActual < 0) { mesActual = 11; añoActual--; }
   else if (mesActual > 11) { mesActual = 0; añoActual++; }
   cerrarEventosDia();
-  render(eventos);
+  renderizarCalendario();
 }
 
 function irHoy() {
-  const h = new Date();
-  mesActual = h.getMonth();
-  añoActual = h.getFullYear();
+  const hoy = new Date();
+  mesActual = hoy.getMonth();
+  añoActual = hoy.getFullYear();
   cerrarEventosDia();
-  render(eventos);
+  renderizarCalendario();
+}
+
+function verEventosDia(dia) {
+  const eventosDia = getEventosDia(dia);
+  if (eventosDia.length === 0) return;
+  
+  const fecha = new Date(añoActual, mesActual, dia);
+  const fechaTexto = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  
+  const tituloEl = document.getElementById('eventosDiaTitulo');
+  if (tituloEl) tituloEl.innerHTML = `<span class="icon">📅</span> ${fechaTexto} (${eventosDia.length})`;
+  
+  const listaEl = document.getElementById('eventosDiaList');
+  if (listaEl) listaEl.innerHTML = eventosDia.map(ev => crearItemLista(ev)).join('');
+  
+  document.getElementById('eventosDiaSection')?.classList.remove('hidden');
+}
+
+function cerrarEventosDia() {
+  document.getElementById('eventosDiaSection')?.classList.add('hidden');
 }
 
 // ============================================
@@ -695,95 +658,277 @@ function irHoy() {
 // ============================================
 function cambiarVista(vista) {
   vistaActual = vista;
-  document.querySelectorAll('.view-btn').forEach((b, i) => {
-    b.classList.toggle('active', (vista === 'tarjetas' && i === 0) || (vista === 'calendario' && i === 1));
+  
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.toLowerCase().includes(vista));
   });
   
-  const vt = document.getElementById('vistaTarjetas');
-  const vc = document.getElementById('vistaCalendario');
-  if (vt) vt.style.display = vista === 'tarjetas' ? 'block' : 'none';
-  if (vc) vc.style.display = vista === 'calendario' ? 'block' : 'none';
-  render(eventos);
+  const vistaTarjetas = document.getElementById('vistaTarjetas');
+  const vistaCalendario = document.getElementById('vistaCalendario');
+  
+  if (vista === 'tarjetas') {
+    if (vistaTarjetas) vistaTarjetas.style.display = 'block';
+    if (vistaCalendario) vistaCalendario.style.display = 'none';
+  } else {
+    if (vistaTarjetas) vistaTarjetas.style.display = 'none';
+    if (vistaCalendario) vistaCalendario.style.display = 'block';
+    renderizarCalendario();
+  }
 }
 
 // ============================================
-// MODAL
+// BÚSQUEDA
 // ============================================
-function abrirModal(ev) {
-  const modal = document.getElementById('modal');
-  if (!modal) return;
+function buscarEventos() {
+  const term = document.getElementById('searchInput')?.value.trim().toLowerCase();
   
-  const nombre = ev.Evento || ev["ID Eventos"] || 'Sin nombre';
-  const desc = ev.Descripción || ev.Descripcion || 'Sin descripción.';
-  const img = extraerImg(ev["Imagen URL"]) || extraerImg(ev.Cartel) || 'https://placehold.co/600x400/032845/ffffff?text=COAJ';
+  if (!term) {
+    cerrarBusqueda();
+    return;
+  }
+  
+  const filtrados = eventos.filter(ev => 
+    (ev.Evento || '').toLowerCase().includes(term) ||
+    (ev.Categoría || ev.Categoria || '').toLowerCase().includes(term) ||
+    (ev['Centro Juvenil'] || '').toLowerCase().includes(term) ||
+    (ev.Descripción || '').toLowerCase().includes(term)
+  );
+  
+  const container = document.getElementById('searchResultsList');
+  const section = document.getElementById('searchResults');
+  
+  if (!container || !section) return;
+  
+  if (filtrados.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state active">
+        <span class="material-symbols-outlined">search_off</span>
+        <h3>Sin resultados</h3>
+        <p>No encontramos eventos para "${term}"</p>
+      </div>
+    `;
+  } else {
+    container.innerHTML = filtrados.map(ev => crearItemLista(ev)).join('');
+  }
+  
+  section.classList.remove('hidden');
+  document.getElementById('vistaTarjetas')?.style.setProperty('display', 'none');
+  document.getElementById('vistaCalendario')?.style.setProperty('display', 'none');
+}
 
-  document.getElementById('modalImg').src = img;
-  document.getElementById('modalTitulo').textContent = nombre;
-  document.getElementById('modalDescripcion').textContent = desc;
+function cerrarBusqueda() {
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) searchInput.value = '';
+  
+  document.getElementById('searchResults')?.classList.add('hidden');
+  
+  if (vistaActual === 'tarjetas') {
+    document.getElementById('vistaTarjetas')?.style.setProperty('display', 'block');
+  } else {
+    document.getElementById('vistaCalendario')?.style.setProperty('display', 'block');
+  }
+}
 
-  const badges = document.getElementById('modalBadges');
-  badges.innerHTML = '';
+// ============================================
+// MODAL CATEGORÍA/CENTRO
+// ============================================
+function abrirModalCategoria(valor, tipo) {
+  categoriaSeleccionada = { valor, tipo };
+  
+  let filtrados;
+  let icono;
+  
+  if (tipo === 'centro') {
+    filtrados = eventos.filter(ev => ev['Centro Juvenil'] === valor);
+    icono = '🏢';
+  } else {
+    filtrados = eventos.filter(ev => (ev.Categoría || ev.Categoria || 'Otros') === valor);
+    icono = getIconoCategoria(valor);
+  }
+  
+  document.getElementById('categoryModalIcon').textContent = icono;
+  document.getElementById('categoryModalName').textContent = valor;
+  document.getElementById('categoryModalCount').textContent = filtrados.length;
+  
+  const lista = document.getElementById('categoryEventsList');
+  if (lista) lista.innerHTML = filtrados.map(ev => crearItemLista(ev)).join('');
+  
+  document.getElementById('categoryOverlay')?.classList.add('active');
+  document.getElementById('categoryModal')?.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function cerrarModalCategoria() {
+  document.getElementById('categoryOverlay')?.classList.remove('active');
+  document.getElementById('categoryModal')?.classList.remove('active');
+  document.body.style.overflow = '';
+  categoriaSeleccionada = null;
+}
+
+// ============================================
+// MODAL DETALLE
+// ============================================
+function abrirModalDetalle(id) {
+  eventoSeleccionado = eventos.find(ev => (ev['ID Eventos'] || ev.Evento) === id);
+  if (!eventoSeleccionado) return;
+  
+  const ev = eventoSeleccionado;
+  const modal = document.getElementById('detailModal');
+  
+  document.getElementById('detailImage').style.backgroundImage = `url('${getImagenEvento(ev)}')`;
+  
   const estado = calcularEstado(ev);
-  if (estado === 'Desarrollo') badges.innerHTML += '<span class="modal-badge badge-desarrollo">En curso</span>';
-  else if (estado === 'Finalizado') badges.innerHTML += '<span class="modal-badge badge-finalizado">Finalizado</span>';
-  else if (estado === 'Programado') badges.innerHTML += '<span class="modal-badge badge-programado">Próximo</span>';
-  
   const cat = ev.Categoría || ev.Categoria;
-  if (cat) badges.innerHTML += `<span class="modal-badge" style="background:#e8552a;color:white;">${cat}</span>`;
-
-  document.getElementById('modalInfo').innerHTML = `
-    <div class="modal-info-card"><small>📅 Del</small><strong>${formatearFecha(ev["Fecha inicio"])}</strong></div>
-    <div class="modal-info-card"><small>⏰ Al</small><strong>${formatearFecha(ev["Fecha finalización"])}</strong></div>
-    <div class="modal-info-card"><small>🏢 Centro</small><strong>${ev["Centro Juvenil"] || 'N/A'}</strong></div>
-    <div class="modal-info-card"><small>📚 Programa</small><strong>${ev.Programa || 'N/A'}</strong></div>
-    <div class="modal-info-card"><small>👥 Plazas</small><strong>${ev.Plazas || 'N/A'}</strong></div>
+  
+  document.getElementById('detailBadges').innerHTML = `
+    ${cat ? `<span class="detail-category-badge">${getIconoCategoria(cat)} ${cat}</span>` : ''}
+    <span class="detail-status-badge status-${estado}">${getEstadoTexto(estado)}</span>
   `;
-
-  modal.classList.add('active');
-  document.body.classList.add('modal-open');
+  
+  document.getElementById('detailTitle').textContent = ev.Evento || 'Sin título';
+  document.getElementById('detailDescription').textContent = ev.Descripción || ev.Descripcion || 'Evento organizado por COAJ Madrid. ¡No te lo pierdas!';
+  
+  document.getElementById('detailInfo').innerHTML = `
+    <div class="detail-info-item">
+      <span class="material-symbols-outlined">location_on</span>
+      <div>
+        <small>Centro</small>
+        <strong>${ev['Centro Juvenil'] || 'Por definir'}</strong>
+      </div>
+    </div>
+    <div class="detail-info-item">
+      <span class="material-symbols-outlined">event</span>
+      <div>
+        <small>Inicio</small>
+        <strong>${formatearFecha(ev["Fecha inicio"])}</strong>
+      </div>
+    </div>
+    <div class="detail-info-item">
+      <span class="material-symbols-outlined">event_available</span>
+      <div>
+        <small>Fin</small>
+        <strong>${formatearFecha(ev["Fecha finalización"])}</strong>
+      </div>
+    </div>
+    <div class="detail-info-item">
+      <span class="material-symbols-outlined">group</span>
+      <div>
+        <small>Plazas</small>
+        <strong>${ev.Plazas || 'Ilimitadas'}</strong>
+      </div>
+    </div>
+  `;
+  
+  const btn = document.getElementById('detailActionBtn');
+  if (puedeInscribirse()) {
+    btn.innerHTML = '<span class="material-symbols-outlined">how_to_reg</span> Inscribirme';
+    btn.onclick = inscribirse;
+  } else {
+    btn.innerHTML = '<span class="material-symbols-outlined">login</span> Inicia sesión';
+    btn.onclick = () => { cerrarModalDetalle(); mostrarLoginModal(); };
+  }
+  
+  modal?.classList.add('active');
+  document.body.style.overflow = 'hidden';
 }
 
-function cerrarModal(e) {
-  if (!e || e.target.id === 'modal') {
-    document.getElementById('modal')?.classList.remove('active');
-    document.body.classList.remove('modal-open');
+function cerrarModalDetalle() {
+  document.getElementById('detailModal')?.classList.remove('active');
+  document.body.style.overflow = '';
+  eventoSeleccionado = null;
+}
+
+function puedeInscribirse() {
+  const sesion = localStorage.getItem(COAJ_CONFIG?.cache?.userKey || 'coajUsuario');
+  if (!sesion) return false;
+  return JSON.parse(sesion).alias !== 'invitado';
+}
+
+// ============================================
+// ACCIONES
+// ============================================
+async function inscribirse() {
+  if (!eventoSeleccionado) return;
+  
+  const sesion = localStorage.getItem(COAJ_CONFIG?.cache?.userKey || 'coajUsuario');
+  if (!sesion) {
+    mostrarToast('Inicia sesión para inscribirte', 'error');
+    return;
+  }
+  
+  const usuario = JSON.parse(sesion);
+  if (usuario.alias === 'invitado') {
+    mostrarToast('Los invitados no pueden inscribirse', 'error');
+    return;
+  }
+  
+  const btn = document.getElementById('detailActionBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Procesando...';
+  }
+  
+  try {
+    const res = await fetch(`${API_BASE}/inscribir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        actividad: eventoSeleccionado.Evento, 
+        usuario: usuario.alias 
+      })
+    });
+    
+    const data = await res.json();
+    
+    if (data.success) {
+      mostrarToast('¡Inscripción exitosa!', 'success');
+      cerrarModalDetalle();
+    } else {
+      mostrarToast(data.message || 'Error al inscribirse', 'error');
+    }
+  } catch (err) {
+    mostrarToast('Error de conexión', 'error');
+  }
+  
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined">how_to_reg</span> Inscribirme';
+  }
+}
+
+function compartirEvento() {
+  if (!eventoSeleccionado) return;
+  
+  const texto = `¡Mira este evento en COAJ Madrid! ${eventoSeleccionado.Evento}`;
+  
+  if (navigator.share) {
+    navigator.share({
+      title: eventoSeleccionado.Evento,
+      text: texto,
+      url: window.location.href
+    });
+  } else {
+    navigator.clipboard.writeText(texto);
+    mostrarToast('Enlace copiado al portapapeles', 'success');
   }
 }
 
 // ============================================
 // TOAST
 // ============================================
-function mostrarToast(msg, tipo = 'success') {
+function mostrarToast(mensaje, tipo = 'success') {
   const toast = document.getElementById('toast');
+  const icon = document.getElementById('toastIcon');
+  const text = document.getElementById('toastMessage');
+  
   if (!toast) return;
-  document.getElementById('toastMessage').textContent = msg;
-  document.getElementById('toastIcon').textContent = tipo === 'success' ? '✓' : '✕';
-  toast.className = `toast ${tipo} show`;
-  setTimeout(() => toast.classList.remove('show'), 3000);
-}
-
-// ============================================
-// FECHA HEADER
-// ============================================
-function actualizarFecha() {
-  const el = document.getElementById('fecha');
-  if (el) el.textContent = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
-
-// ============================================
-// INICIALIZAR
-// ============================================
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('🎯 Iniciando Eventos COAJ...');
-  cargarTema();
-  actualizarFecha();
-  verificarSesion(); // ← Verifica sesión guardada de actividades
   
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.avatar-btn') && !e.target.closest('.user-menu')) cerrarUserMenu();
-  });
+  if (icon) icon.textContent = tipo === 'success' ? 'check_circle' : 'error';
+  if (text) text.textContent = mensaje;
   
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') cerrarModal();
-  });
-});
+  toast.className = `toast show ${tipo}`;
+  
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
