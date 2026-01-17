@@ -1,8 +1,8 @@
 // ============================================
-// COAJ MADRID - ACTIVIDADES.JS
-// CAMPOS CORRECTOS DEL GAS:
-// Actividad, Centro Juvenil, Clase, Estado, Plazas,
-// Del, Al, Días, ID Actividad, URL Actividad (en actividadVigente)
+// COAJ MADRID - ACTIVIDADES v3
+// Chips + Modal categoría + Vista lista
+// Campos GAS: Actividad, Centro Juvenil, Clase, Estado, 
+// Plazas, Días, Del, Al, ID Actividad, URL Actividad
 // ============================================
 
 const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
@@ -10,12 +10,10 @@ const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
 let actividades = [];
 let actividadVigente = [];
 let actividadSeleccionada = null;
-let claseActiva = 'Todas';
-let vistaGrid = 'grid';
-let busqueda = '';
+let categoriaSeleccionada = null;
 
 // ============================================
-// INICIALIZACIÓN
+// INIT
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
@@ -28,31 +26,31 @@ function warmup() {
 }
 
 // ============================================
-// TEMA CLARO/OSCURO
+// TEMA
 // ============================================
 function initTheme() {
-  const savedTheme = localStorage.getItem('coajTheme') || 'light';
-  setTheme(savedTheme);
+  const saved = localStorage.getItem('coajTheme') || 'light';
+  setTheme(saved);
 }
 
 function toggleTheme() {
-  const currentTheme = document.documentElement.getAttribute('data-theme');
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  setTheme(newTheme);
-  localStorage.setItem('coajTheme', newTheme);
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  setTheme(next);
+  localStorage.setItem('coajTheme', next);
 }
 
 function setTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   const isDark = theme === 'dark';
   
-  const themeIcon = document.getElementById('themeIcon');
-  if (themeIcon) themeIcon.textContent = isDark ? 'light_mode' : 'dark_mode';
+  const icon = document.getElementById('themeIcon');
+  if (icon) icon.textContent = isDark ? 'light_mode' : 'dark_mode';
   
-  const menuThemeIcon = document.getElementById('menuThemeIcon');
-  const menuThemeText = document.getElementById('menuThemeText');
-  if (menuThemeIcon) menuThemeIcon.textContent = isDark ? 'light_mode' : 'dark_mode';
-  if (menuThemeText) menuThemeText.textContent = isDark ? 'Modo Claro' : 'Modo Oscuro';
+  const menuIcon = document.getElementById('menuThemeIcon');
+  const menuText = document.getElementById('menuThemeText');
+  if (menuIcon) menuIcon.textContent = isDark ? 'light_mode' : 'dark_mode';
+  if (menuText) menuText.textContent = isDark ? 'Modo Claro' : 'Modo Oscuro';
 }
 
 // ============================================
@@ -78,30 +76,28 @@ function mostrarUsuario(usuario) {
   const nombre = usuario.nombre || usuario.alias || 'Usuario';
   const inicial = nombre.charAt(0).toUpperCase();
   
-  const headerGreeting = document.getElementById('headerGreeting');
-  const avatarInitial = document.getElementById('avatarInitial');
-  if (headerGreeting) headerGreeting.textContent = `¡Hola, ${nombre.split(' ')[0]}!`;
-  if (avatarInitial) avatarInitial.textContent = inicial;
+  const els = {
+    headerGreeting: document.getElementById('headerGreeting'),
+    avatarInitial: document.getElementById('avatarInitial'),
+    menuAvatarInitial: document.getElementById('menuAvatarInitial'),
+    menuUserName: document.getElementById('menuUserName'),
+    bottomAvatarInitial: document.getElementById('bottomAvatarInitial'),
+    bottomUserName: document.getElementById('bottomUserName')
+  };
   
-  const menuAvatarInitial = document.getElementById('menuAvatarInitial');
-  const menuUserName = document.getElementById('menuUserName');
-  const menuUserEmail = document.getElementById('menuUserEmail');
-  if (menuAvatarInitial) menuAvatarInitial.textContent = inicial;
-  if (menuUserName) menuUserName.textContent = nombre;
-  if (menuUserEmail) menuUserEmail.textContent = usuario.email || `${usuario.alias || 'usuario'}@coaj.es`;
-  
-  // Bottom nav
-  const bottomAvatarInitial = document.getElementById('bottomAvatarInitial');
-  const bottomUserName = document.getElementById('bottomUserName');
-  if (bottomAvatarInitial) bottomAvatarInitial.textContent = inicial;
-  if (bottomUserName) bottomUserName.textContent = nombre.split(' ')[0];
+  if (els.headerGreeting) els.headerGreeting.textContent = `¡Hola, ${nombre.split(' ')[0]}!`;
+  if (els.avatarInitial) els.avatarInitial.textContent = inicial;
+  if (els.menuAvatarInitial) els.menuAvatarInitial.textContent = inicial;
+  if (els.menuUserName) els.menuUserName.textContent = nombre;
+  if (els.bottomAvatarInitial) els.bottomAvatarInitial.textContent = inicial;
+  if (els.bottomUserName) els.bottomUserName.textContent = nombre.split(' ')[0];
 }
 
 function actualizarBottomNav(logueado, usuario) {
   const navGuest = document.getElementById('bottomNavGuest');
   const navUser = document.getElementById('bottomNavUser');
   
-  if (logueado && usuario) {
+  if (logueado) {
     if (navGuest) navGuest.style.display = 'none';
     if (navUser) navUser.style.display = 'flex';
   } else {
@@ -111,19 +107,14 @@ function actualizarBottomNav(logueado, usuario) {
 }
 
 function mostrarLoginModal() {
-  const loginModal = document.getElementById('loginModal');
-  if (loginModal) loginModal.classList.remove('hidden');
+  document.getElementById('loginModal')?.classList.remove('hidden');
 }
 
-// ============================================
-// LOGIN
-// ============================================
 async function iniciarSesion(e) {
   e.preventDefault();
   
   const alias = document.getElementById('alias')?.value.trim();
   const contrasena = document.getElementById('contrasena')?.value;
-  const errorDiv = document.getElementById('loginError');
   const btn = document.querySelector('.btn-login');
   
   if (!alias || !contrasena) {
@@ -135,8 +126,6 @@ async function iniciarSesion(e) {
     btn.disabled = true;
     btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Verificando...';
   }
-  
-  if (errorDiv) errorDiv.style.display = 'none';
   
   try {
     const res = await fetch(`${API_BASE}/login`, {
@@ -158,7 +147,6 @@ async function iniciarSesion(e) {
       mostrarErrorLogin(data.message || 'Credenciales incorrectas');
     }
   } catch (err) {
-    console.error('Login error:', err);
     mostrarErrorLogin('Error de conexión');
   }
   
@@ -178,10 +166,10 @@ function entrarComoInvitado() {
 }
 
 function mostrarErrorLogin(msg) {
-  const errorDiv = document.getElementById('loginError');
-  if (errorDiv) {
-    errorDiv.textContent = msg;
-    errorDiv.style.display = 'block';
+  const el = document.getElementById('loginError');
+  if (el) {
+    el.textContent = msg;
+    el.style.display = 'block';
   }
 }
 
@@ -191,36 +179,17 @@ function cerrarSesion() {
 }
 
 // ============================================
-// UI HELPERS
+// UI
 // ============================================
 function toggleUserMenu() {
   document.getElementById('userMenu')?.classList.toggle('active');
 }
 
-function toggleFiltros() {
-  const panel = document.getElementById('filtrosPanel');
-  const btn = document.querySelector('.filter-btn');
-  panel?.classList.toggle('active');
-  btn?.classList.toggle('active');
-}
-
-function cambiarVistaGrid(vista) {
-  vistaGrid = vista;
-  document.getElementById('btnGrid')?.classList.toggle('active', vista === 'grid');
-  document.getElementById('btnList')?.classList.toggle('active', vista === 'list');
-  
-  const grid = document.getElementById('actividadesGrid');
-  if (grid) grid.classList.toggle('list-view', vista === 'list');
-}
-
 document.addEventListener('click', (e) => {
   const menu = document.getElementById('userMenu');
   const avatar = document.getElementById('headerAvatar');
-  
-  if (menu?.classList.contains('active')) {
-    if (!menu.contains(e.target) && !avatar?.contains(e.target)) {
-      menu.classList.remove('active');
-    }
+  if (menu?.classList.contains('active') && !menu.contains(e.target) && !avatar?.contains(e.target)) {
+    menu.classList.remove('active');
   }
 });
 
@@ -229,7 +198,6 @@ document.addEventListener('click', (e) => {
 // ============================================
 async function cargarDatos() {
   const loading = document.getElementById('loading');
-  
   if (loading) loading.classList.remove('hidden');
   
   try {
@@ -244,54 +212,37 @@ async function cargarDatos() {
     
     if (actividades.length > 0) {
       console.log('📋 Campos:', Object.keys(actividades[0]));
-      console.log('📋 Ejemplo:', actividades[0]);
-    }
-    
-    if (actividadVigente.length > 0) {
-      console.log('📋 ActividadVigente campos:', Object.keys(actividadVigente[0]));
     }
     
     if (loading) loading.classList.add('hidden');
     
     if (actividades.length === 0) {
-      mostrarEmpty();
+      document.getElementById('emptyState')?.classList.add('active');
     } else {
-      renderizarDestacadas();
       renderizarProximas();
-      renderizarClases();
-      renderizarFiltros();
-      renderizarTodas();
+      renderizarChipsCategorias();
       
-      document.getElementById('seccionDestacadas')?.classList.remove('hidden');
       document.getElementById('seccionProximas')?.classList.remove('hidden');
       document.getElementById('seccionCategorias')?.classList.remove('hidden');
-      document.getElementById('seccionTodas')?.classList.remove('hidden');
     }
   } catch (err) {
-    console.error('❌ Error:', err);
+    console.error('Error:', err);
     if (loading) loading.classList.add('hidden');
-    mostrarEmpty();
+    document.getElementById('emptyState')?.classList.add('active');
   }
 }
 
 // ============================================
-// OBTENER IMAGEN - Busca en actividadVigente por nombre
+// IMAGEN - Busca en actividadVigente
 // ============================================
-function getImagenActividad(actividad) {
-  const nombre = actividad.Actividad;
-  
-  // Buscar en actividadVigente por nombre de actividad
+function getImagenActividad(a) {
+  const nombre = a.Actividad;
   const vigente = actividadVigente.find(v => v.Actividad === nombre);
   
-  if (vigente) {
-    // El campo es "URL Actividad" según el GAS
-    if (vigente['URL Actividad']) return vigente['URL Actividad'];
-    if (vigente.Imagen) return vigente.Imagen;
-  }
+  if (vigente?.['URL Actividad']) return vigente['URL Actividad'];
   
-  // Fallback: imagen por defecto según la Clase
-  const imagenes = {
-    'Deporte': 'https://images.unsplash.com/photo-1461896836934- voices-of-youth?w=400',
+  const imgs = {
+    'Deporte': 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400',
     'Arte': 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400',
     'Música': 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400',
     'Tecnología': 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400',
@@ -302,338 +253,96 @@ function getImagenActividad(actividad) {
     'default': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'
   };
   
-  return imagenes[actividad.Clase] || imagenes.default;
+  return imgs[a.Clase] || imgs.default;
 }
 
-// ============================================
-// ICONOS POR CLASE
-// ============================================
 function getIconoClase(clase) {
   const iconos = {
-    'Deporte': '⚽',
-    'Arte': '🎨',
-    'Música': '🎵',
-    'Tecnología': '💻',
-    'Idiomas': '🌍',
-    'Danza': '💃',
-    'Teatro': '🎭',
-    'Cocina': '👨‍🍳',
-    'Fotografía': '📷',
-    'Gaming': '🎮',
-    'Formación': '📚',
-    'Taller': '🔧',
-    'Ocio': '🎉',
-    'default': '🎯'
+    'Deporte': '⚽', 'Arte': '🎨', 'Música': '🎵', 'Tecnología': '💻',
+    'Idiomas': '🌍', 'Danza': '💃', 'Teatro': '🎭', 'Cocina': '👨‍🍳',
+    'Fotografía': '📷', 'Gaming': '🎮', 'Formación': '📚', 'Taller': '🔧',
+    'Ocio': '🎉', 'default': '🎯'
   };
   return iconos[clase] || iconos.default;
 }
 
 // ============================================
-// FORMATEAR FECHAS
+// RENDERIZAR PRÓXIMAS (Carousel)
 // ============================================
-function formatearFecha(fecha) {
-  if (!fecha) return '';
-  // Formato típico: "1/15/2026 12:00:00 AM"
-  const partes = fecha.split(' ')[0];
-  if (partes.includes('/')) {
-    const [mes, dia, anio] = partes.split('/');
-    return `${dia}/${mes}/${anio}`;
-  }
-  return fecha;
-}
-
-function formatearPeriodo(del, al) {
-  if (!del && !al) return 'Por definir';
-  const fechaDel = formatearFecha(del);
-  const fechaAl = formatearFecha(al);
-  if (fechaDel && fechaAl) return `${fechaDel} - ${fechaAl}`;
-  return fechaDel || fechaAl || 'Por definir';
-}
-
-// ============================================
-// RENDERIZADO
-// ============================================
-function renderizarDestacadas() {
-  const container = document.getElementById('carouselDestacadas');
-  if (!container) return;
-  
-  const destacadas = actividades.slice(0, 5);
-  container.innerHTML = destacadas.map(a => crearCardCarousel(a, 'badge-semana', '')).join('');
-}
-
 function renderizarProximas() {
   const container = document.getElementById('carouselProximas');
   if (!container) return;
   
-  const proximas = actividades.slice(0, 6);
+  const proximas = actividades.slice(0, 10);
   container.innerHTML = proximas.map((a, i) => {
+    const badge = i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : (a.Días?.split(',')[0]?.trim() || 'Próximo');
     const badgeClass = i === 0 ? 'badge-hoy' : i === 1 ? 'badge-manana' : 'badge-semana';
-    // Campo correcto es "Días" (con tilde)
-    const dias = a.Días || a.Dias || '';
-    const primerDia = dias.split(',')[0]?.trim() || 'Próximo';
-    const badgeText = i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : primerDia;
-    return crearCardCarousel(a, badgeClass, badgeText);
+    return crearCardCarousel(a, badgeClass, badge);
   }).join('');
 }
 
 function crearCardCarousel(a, badgeClass, badgeText) {
   const img = getImagenActividad(a);
-  const dias = a.Días || a.Dias || 'Por definir';
-  const texto = badgeText || dias.split(',')[0]?.trim() || 'Próximo';
   const id = a['ID Actividad'] || a.Actividad;
   
   return `
-    <div class="activity-card" onclick="abrirModal('${id}')">
-      <div class="activity-card-image" style="background-image: url('${img}')">
-        <span class="activity-card-badge ${badgeClass}">${texto}</span>
+    <div class="activity-card" onclick="abrirModalActividad('${id}')">
+      <div class="card-img" style="background-image:url('${img}')">
+        <span class="card-badge ${badgeClass}">${badgeText}</span>
       </div>
-      <div class="activity-card-content">
-        <h3 class="activity-card-title">${a.Actividad || 'Sin título'}</h3>
-        <div class="activity-card-meta">
-          <div class="activity-card-meta-item">
-            <span class="material-symbols-outlined">event</span>
-            ${dias}
-          </div>
-          <div class="activity-card-meta-item">
-            <span class="material-symbols-outlined">location_on</span>
-            ${a['Centro Juvenil'] || 'COAJ Madrid'}
-          </div>
+      <div class="card-body">
+        <h3 class="card-title">${a.Actividad || 'Sin título'}</h3>
+        <div class="card-meta">
+          <span><i class="material-symbols-outlined">event</i>${a.Días || 'Por definir'}</span>
+          <span><i class="material-symbols-outlined">location_on</i>${a['Centro Juvenil'] || 'COAJ'}</span>
         </div>
       </div>
     </div>
   `;
 }
 
-function renderizarClases() {
-  const container = document.getElementById('categoriasGrid');
+// ============================================
+// CHIPS DE CATEGORÍAS (horizontal scroll)
+// ============================================
+function renderizarChipsCategorias() {
+  const container = document.getElementById('chipsCategorias');
   if (!container) return;
   
-  // Contar por "Clase" (campo correcto del GAS)
+  // Contar por Clase
   const clases = {};
   actividades.forEach(a => {
     const clase = a.Clase || 'Otros';
     clases[clase] = (clases[clase] || 0) + 1;
   });
   
-  container.innerHTML = Object.entries(clases).map(([clase, count]) => `
-    <div class="category-card ${claseActiva === clase ? 'active' : ''}" onclick="filtrarPorClase('${clase}')">
-      <div class="category-icon">${getIconoClase(clase)}</div>
-      <div class="category-name">${clase}</div>
-      <div class="category-count">${count} actividad${count !== 1 ? 'es' : ''}</div>
-    </div>
+  // Ordenar por cantidad
+  const sorted = Object.entries(clases).sort((a, b) => b[1] - a[1]);
+  
+  container.innerHTML = sorted.map(([clase, count]) => `
+    <button class="chip-categoria" onclick="abrirModalCategoria('${clase}')">
+      <span class="chip-icon">${getIconoClase(clase)}</span>
+      <span class="chip-name">${clase}</span>
+      <span class="chip-count">${count}</span>
+    </button>
   `).join('');
 }
 
-function renderizarFiltros() {
-  const catContainer = document.getElementById('filtrosCategorias');
-  if (!catContainer) return;
-  
-  const clases = ['Todas', ...new Set(actividades.map(a => a.Clase).filter(Boolean))];
-  
-  catContainer.innerHTML = clases.map(clase => `
-    <button class="chip ${claseActiva === clase ? 'active' : ''}" onclick="filtrarPorClase('${clase}')">${clase}</button>
-  `).join('');
-}
-
-function renderizarTodas() {
-  const container = document.getElementById('actividadesGrid');
-  if (!container) return;
-  
-  let filtradas = actividades;
-  
-  // Filtrar por "Clase" (campo correcto)
-  if (claseActiva !== 'Todas') {
-    filtradas = filtradas.filter(a => a.Clase === claseActiva);
-  }
-  
-  // Búsqueda
-  if (busqueda) {
-    const term = busqueda.toLowerCase();
-    filtradas = filtradas.filter(a => 
-      (a.Actividad || '').toLowerCase().includes(term) ||
-      (a.Clase || '').toLowerCase().includes(term) ||
-      (a['Centro Juvenil'] || '').toLowerCase().includes(term)
-    );
-  }
-  
-  if (filtradas.length === 0) {
-    container.innerHTML = '';
-    document.getElementById('emptyState')?.classList.add('active');
-    return;
-  }
-  
-  document.getElementById('emptyState')?.classList.remove('active');
-  container.innerHTML = filtradas.map(a => crearCardGrid(a)).join('');
-}
-
-function crearCardGrid(a) {
-  const img = getImagenActividad(a);
-  const estado = a.Estado || 'Programado';
-  const estadoClass = estado.toLowerCase().includes('desarrollo') ? 'desarrollo' 
-                    : estado.toLowerCase().includes('final') ? 'finalizado' 
-                    : 'programado';
-  const id = a['ID Actividad'] || a.Actividad;
-  const dias = a.Días || a.Dias || 'Por definir';
-  
-  return `
-    <div class="activity-grid-card" onclick="abrirModal('${id}')">
-      <div class="activity-grid-image" style="background-image: url('${img}')"></div>
-      <div class="activity-grid-content">
-        <div class="activity-grid-badges">
-          ${a.Clase ? `<span class="activity-badge badge-categoria">${a.Clase}</span>` : ''}
-          <span class="activity-badge badge-estado-${estadoClass}">${estado}</span>
-        </div>
-        <h3 class="activity-grid-title">${a.Actividad || 'Sin título'}</h3>
-        <p class="activity-grid-description">${a['Centro Juvenil'] || 'Centro Juvenil COAJ Madrid'}</p>
-        <div class="activity-grid-footer">
-          <div class="activity-grid-info">
-            <div class="activity-grid-info-item">
-              <span class="material-symbols-outlined">event</span>
-              ${dias}
-            </div>
-            <div class="activity-grid-info-item">
-              <span class="material-symbols-outlined">group</span>
-              ${a.Plazas || '∞'}
-            </div>
-          </div>
-          <button class="activity-grid-btn">Ver más</button>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function mostrarEmpty() {
-  document.getElementById('emptyState')?.classList.add('active');
-  document.getElementById('seccionDestacadas')?.classList.add('hidden');
-  document.getElementById('seccionProximas')?.classList.add('hidden');
-  document.getElementById('seccionCategorias')?.classList.add('hidden');
-  document.getElementById('seccionTodas')?.classList.add('hidden');
-}
-
 // ============================================
-// FILTROS Y BÚSQUEDA
+// MODAL CATEGORÍA (lista de actividades)
 // ============================================
-function filtrarPorClase(clase) {
-  claseActiva = clase;
+function abrirModalCategoria(clase) {
+  categoriaSeleccionada = clase;
   
-  document.querySelectorAll('.category-card').forEach(card => {
-    const nombre = card.querySelector('.category-name')?.textContent;
-    card.classList.toggle('active', nombre === clase);
-  });
+  const filtradas = actividades.filter(a => (a.Clase || 'Otros') === clase);
   
-  document.querySelectorAll('#filtrosCategorias .chip').forEach(chip => {
-    chip.classList.toggle('active', chip.textContent === clase);
-  });
+  const modal = document.getElementById('modalCategoria');
+  const titulo = document.getElementById('modalCategoriaTitulo');
+  const lista = document.getElementById('modalCategoriaLista');
   
-  renderizarTodas();
-}
-
-function buscarActividades() {
-  busqueda = document.getElementById('searchInput')?.value.trim() || '';
-  renderizarTodas();
-}
-
-function limpiarFiltros() {
-  claseActiva = 'Todas';
-  busqueda = '';
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput) searchInput.value = '';
-  renderizarClases();
-  renderizarFiltros();
-  renderizarTodas();
-  document.getElementById('emptyState')?.classList.remove('active');
-}
-
-// ============================================
-// MODAL DETALLE - CAMPOS CORRECTOS DEL GAS
-// ============================================
-function abrirModal(id) {
-  // Buscar por "ID Actividad" o por nombre
-  actividadSeleccionada = actividades.find(a => 
-    (a['ID Actividad'] || a.Actividad) === id
-  );
+  if (titulo) titulo.innerHTML = `${getIconoClase(clase)} ${clase} <span class="count">${filtradas.length}</span>`;
   
-  if (!actividadSeleccionada) {
-    console.error('Actividad no encontrada:', id);
-    return;
-  }
-  
-  const a = actividadSeleccionada;
-  const modal = document.getElementById('modalDetalle');
-  
-  // Imagen
-  const modalImage = document.getElementById('modalImage');
-  if (modalImage) {
-    modalImage.style.backgroundImage = `url('${getImagenActividad(a)}')`;
-  }
-  
-  // Badges
-  const estado = a.Estado || 'Programado';
-  const estadoClass = estado.toLowerCase().includes('desarrollo') ? 'desarrollo' 
-                    : estado.toLowerCase().includes('final') ? 'finalizado' 
-                    : 'programado';
-  
-  const modalBadges = document.getElementById('modalBadges');
-  if (modalBadges) {
-    modalBadges.innerHTML = `
-      ${a.Clase ? `<span class="activity-badge badge-categoria">${a.Clase}</span>` : ''}
-      <span class="activity-badge badge-estado-${estadoClass}">${estado}</span>
-    `;
-  }
-  
-  // Título
-  const modalTitle = document.getElementById('modalTitle');
-  if (modalTitle) modalTitle.textContent = a.Actividad || 'Sin título';
-  
-  // Descripción
-  const modalDescription = document.getElementById('modalDescription');
-  if (modalDescription) {
-    modalDescription.textContent = `Actividad de ${a.Clase || 'formación'} en ${a['Centro Juvenil'] || 'COAJ Madrid'}`;
-  }
-  
-  // Info Grid - CAMPOS CORRECTOS DEL GAS
-  const dias = a.Días || a.Dias || 'Por definir';
-  const modalInfo = document.getElementById('modalInfo');
-  if (modalInfo) {
-    modalInfo.innerHTML = `
-      <div class="modal-info-item">
-        <small><span class="material-symbols-outlined">location_on</span> Centro</small>
-        <strong>${a['Centro Juvenil'] || 'Por definir'}</strong>
-      </div>
-      <div class="modal-info-item">
-        <small><span class="material-symbols-outlined">event</span> Días</small>
-        <strong>${dias}</strong>
-      </div>
-      <div class="modal-info-item">
-        <small><span class="material-symbols-outlined">date_range</span> Periodo</small>
-        <strong>${formatearPeriodo(a.Del, a.Al)}</strong>
-      </div>
-      <div class="modal-info-item">
-        <small><span class="material-symbols-outlined">group</span> Plazas</small>
-        <strong>${a.Plazas || 'Ilimitadas'}</strong>
-      </div>
-      <div class="modal-info-item">
-        <small><span class="material-symbols-outlined">category</span> Clase</small>
-        <strong>${a.Clase || 'General'}</strong>
-      </div>
-      <div class="modal-info-item">
-        <small><span class="material-symbols-outlined">info</span> Estado</small>
-        <strong>${estado}</strong>
-      </div>
-    `;
-  }
-  
-  // Botón inscripción
-  const btnInscribirse = document.getElementById('btnInscribirse');
-  if (btnInscribirse) {
-    if (puedeInscribirse()) {
-      btnInscribirse.innerHTML = '<span class="material-symbols-outlined">how_to_reg</span> Inscribirme';
-      btnInscribirse.onclick = inscribirse;
-    } else {
-      btnInscribirse.innerHTML = '<span class="material-symbols-outlined">login</span> Inicia sesión';
-      btnInscribirse.onclick = () => { cerrarModal(); mostrarLoginModal(); };
-    }
+  if (lista) {
+    lista.innerHTML = filtradas.map(a => crearItemLista(a)).join('');
   }
   
   if (modal) {
@@ -642,10 +351,101 @@ function abrirModal(id) {
   }
 }
 
-function cerrarModal(e) {
-  if (e && e.target !== e.currentTarget) return;
+function crearItemLista(a) {
+  const img = getImagenActividad(a);
+  const estado = a.Estado || 'Programado';
+  const estadoClass = estado.toLowerCase().includes('desarrollo') ? 'desarrollo' 
+                    : estado.toLowerCase().includes('final') ? 'finalizado' 
+                    : 'programado';
+  const id = a['ID Actividad'] || a.Actividad;
+  const dias = a.Días || a.Dias || 'Por definir';
   
-  const modal = document.getElementById('modalDetalle');
+  return `
+    <div class="list-item" onclick="abrirModalActividad('${id}')">
+      <div class="list-img" style="background-image:url('${img}')"></div>
+      <div class="list-content">
+        <h4 class="list-title">${a.Actividad}</h4>
+        <div class="list-info">
+          <span class="list-badge badge-${estadoClass}">${estado}</span>
+          <span class="list-meta"><i class="material-symbols-outlined">event</i>${dias}</span>
+        </div>
+        <div class="list-details">
+          <span><i class="material-symbols-outlined">location_on</i>${a['Centro Juvenil'] || 'COAJ'}</span>
+          <span><i class="material-symbols-outlined">group</i>${a.Plazas || '∞'} plazas</span>
+        </div>
+      </div>
+      <i class="material-symbols-outlined list-arrow">chevron_right</i>
+    </div>
+  `;
+}
+
+function cerrarModalCategoria() {
+  const modal = document.getElementById('modalCategoria');
+  if (modal) {
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  categoriaSeleccionada = null;
+}
+
+// ============================================
+// MODAL ACTIVIDAD (detalle)
+// ============================================
+function abrirModalActividad(id) {
+  actividadSeleccionada = actividades.find(a => (a['ID Actividad'] || a.Actividad) === id);
+  
+  if (!actividadSeleccionada) return;
+  
+  const a = actividadSeleccionada;
+  const modal = document.getElementById('modalActividad');
+  
+  // Imagen
+  document.getElementById('modalActividadImg').style.backgroundImage = `url('${getImagenActividad(a)}')`;
+  
+  // Badges
+  const estado = a.Estado || 'Programado';
+  const estadoClass = estado.toLowerCase().includes('desarrollo') ? 'desarrollo' 
+                    : estado.toLowerCase().includes('final') ? 'finalizado' 
+                    : 'programado';
+  
+  document.getElementById('modalActividadBadges').innerHTML = `
+    ${a.Clase ? `<span class="badge-categoria">${getIconoClase(a.Clase)} ${a.Clase}</span>` : ''}
+    <span class="badge-estado badge-${estadoClass}">${estado}</span>
+  `;
+  
+  // Contenido
+  document.getElementById('modalActividadTitulo').textContent = a.Actividad;
+  document.getElementById('modalActividadDesc').textContent = `Actividad de ${a.Clase || 'formación'} en ${a['Centro Juvenil'] || 'COAJ Madrid'}`;
+  
+  // Info
+  const dias = a.Días || a.Dias || 'Por definir';
+  const periodo = formatearPeriodo(a.Del, a.Al);
+  
+  document.getElementById('modalActividadInfo').innerHTML = `
+    <div class="info-item"><i class="material-symbols-outlined">location_on</i><div><small>Centro</small><strong>${a['Centro Juvenil'] || 'Por definir'}</strong></div></div>
+    <div class="info-item"><i class="material-symbols-outlined">event</i><div><small>Días</small><strong>${dias}</strong></div></div>
+    <div class="info-item"><i class="material-symbols-outlined">date_range</i><div><small>Periodo</small><strong>${periodo}</strong></div></div>
+    <div class="info-item"><i class="material-symbols-outlined">group</i><div><small>Plazas</small><strong>${a.Plazas || 'Ilimitadas'}</strong></div></div>
+  `;
+  
+  // Botón inscripción
+  const btn = document.getElementById('btnInscribirseActividad');
+  if (puedeInscribirse()) {
+    btn.innerHTML = '<i class="material-symbols-outlined">how_to_reg</i> Inscribirme';
+    btn.onclick = inscribirse;
+  } else {
+    btn.innerHTML = '<i class="material-symbols-outlined">login</i> Inicia sesión';
+    btn.onclick = () => { cerrarModalActividad(); mostrarLoginModal(); };
+  }
+  
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function cerrarModalActividad() {
+  const modal = document.getElementById('modalActividad');
   if (modal) {
     modal.classList.remove('active');
     document.body.style.overflow = '';
@@ -653,11 +453,16 @@ function cerrarModal(e) {
   actividadSeleccionada = null;
 }
 
+function formatearPeriodo(del, al) {
+  if (!del && !al) return 'Por definir';
+  const f = (d) => d ? d.split(' ')[0] : '';
+  return [f(del), f(al)].filter(Boolean).join(' - ') || 'Por definir';
+}
+
 function puedeInscribirse() {
-  const sesion = localStorage.getItem('coajUsuario');
-  if (!sesion) return false;
-  const usuario = JSON.parse(sesion);
-  return usuario.alias !== 'invitado';
+  const s = localStorage.getItem('coajUsuario');
+  if (!s) return false;
+  return JSON.parse(s).alias !== 'invitado';
 }
 
 // ============================================
@@ -667,49 +472,39 @@ async function inscribirse() {
   if (!actividadSeleccionada) return;
   
   const sesion = localStorage.getItem('coajUsuario');
-  if (!sesion) {
-    mostrarToast('Debes iniciar sesión', 'error');
-    return;
-  }
+  if (!sesion) return mostrarToast('Inicia sesión', 'error');
   
   const usuario = JSON.parse(sesion);
-  if (usuario.alias === 'invitado') {
-    mostrarToast('Los invitados no pueden inscribirse', 'error');
-    return;
-  }
+  if (usuario.alias === 'invitado') return mostrarToast('Invitados no pueden inscribirse', 'error');
   
-  const btn = document.getElementById('btnInscribirse');
+  const btn = document.getElementById('btnInscribirseActividad');
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Procesando...';
+    btn.innerHTML = '<i class="material-symbols-outlined">hourglass_empty</i> Procesando...';
   }
   
   try {
     const res = await fetch(`${API_BASE}/inscribir`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        actividad: actividadSeleccionada.Actividad, 
-        usuario: usuario.alias 
-      })
+      body: JSON.stringify({ actividad: actividadSeleccionada.Actividad, usuario: usuario.alias })
     });
     
     const data = await res.json();
     
     if (data.success) {
       mostrarToast('¡Inscripción exitosa!', 'success');
-      cerrarModal();
+      cerrarModalActividad();
     } else {
-      mostrarToast(data.message || 'Error al inscribirse', 'error');
+      mostrarToast(data.message || 'Error', 'error');
     }
   } catch (err) {
-    console.error('Error inscripción:', err);
     mostrarToast('Error de conexión', 'error');
   }
   
   if (btn) {
     btn.disabled = false;
-    btn.innerHTML = '<span class="material-symbols-outlined">how_to_reg</span> Inscribirme';
+    btn.innerHTML = '<i class="material-symbols-outlined">how_to_reg</i> Inscribirme';
   }
 }
 
@@ -717,11 +512,7 @@ function compartirActividad() {
   if (!actividadSeleccionada) return;
   
   if (navigator.share) {
-    navigator.share({
-      title: actividadSeleccionada.Actividad,
-      text: `¡Mira esta actividad en COAJ Madrid!`,
-      url: window.location.href
-    });
+    navigator.share({ title: actividadSeleccionada.Actividad, url: window.location.href });
   } else {
     navigator.clipboard.writeText(window.location.href);
     mostrarToast('Enlace copiado', 'success');
@@ -729,17 +520,55 @@ function compartirActividad() {
 }
 
 // ============================================
+// BÚSQUEDA
+// ============================================
+function buscarActividades() {
+  const term = document.getElementById('searchInput')?.value.trim().toLowerCase();
+  
+  if (!term) {
+    cerrarBusqueda();
+    return;
+  }
+  
+  const filtradas = actividades.filter(a => 
+    (a.Actividad || '').toLowerCase().includes(term) ||
+    (a.Clase || '').toLowerCase().includes(term) ||
+    (a['Centro Juvenil'] || '').toLowerCase().includes(term)
+  );
+  
+  const container = document.getElementById('resultadosBusqueda');
+  const section = document.getElementById('seccionBusqueda');
+  
+  if (filtradas.length === 0) {
+    container.innerHTML = `<div class="empty-search"><i class="material-symbols-outlined">search_off</i><p>Sin resultados para "${term}"</p></div>`;
+  } else {
+    container.innerHTML = filtradas.map(a => crearItemLista(a)).join('');
+  }
+  
+  section?.classList.remove('hidden');
+  document.getElementById('seccionProximas')?.classList.add('hidden');
+  document.getElementById('seccionCategorias')?.classList.add('hidden');
+}
+
+function cerrarBusqueda() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('seccionBusqueda')?.classList.add('hidden');
+  document.getElementById('seccionProximas')?.classList.remove('hidden');
+  document.getElementById('seccionCategorias')?.classList.remove('hidden');
+}
+
+// ============================================
 // TOAST
 // ============================================
-function mostrarToast(mensaje, tipo = 'success') {
+function mostrarToast(msg, tipo = 'success') {
   const toast = document.getElementById('toast');
   const icon = document.getElementById('toastIcon');
-  const msg = document.getElementById('toastMessage');
+  const text = document.getElementById('toastMessage');
   
   if (!toast) return;
   
   if (icon) icon.textContent = tipo === 'success' ? 'check_circle' : 'error';
-  if (msg) msg.textContent = mensaje;
+  if (text) text.textContent = msg;
   toast.className = `toast show ${tipo}`;
   
   setTimeout(() => toast.classList.remove('show'), 3000);
@@ -750,7 +579,17 @@ function mostrarToast(mensaje, tipo = 'success') {
 // ============================================
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    cerrarModal();
+    cerrarModalActividad();
+    cerrarModalCategoria();
     document.getElementById('userMenu')?.classList.remove('active');
+  }
+});
+
+// Back button en móvil
+window.addEventListener('popstate', () => {
+  if (document.getElementById('modalActividad')?.classList.contains('active')) {
+    cerrarModalActividad();
+  } else if (document.getElementById('modalCategoria')?.classList.contains('active')) {
+    cerrarModalCategoria();
   }
 });
