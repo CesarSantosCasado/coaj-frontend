@@ -1,8 +1,8 @@
 // ============================================
 // COAJ MADRID - ACTIVIDADES.JS
-// Dashboard con tema claro/oscuro y bottom nav
-// Campos: Id, Actividad, Categoría, Estado, Imagen,
-// Centro Juvenil, Día, Horario, Descripción, Plazas, Edad, Precio
+// CAMPOS CORRECTOS SEGÚN GAS ORIGINAL:
+// Actividad, Centro Juvenil, Clase, Estado, Plazas,
+// Del, Al, Días, ID Actividad, Imagen/URL Actividad
 // ============================================
 
 const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
@@ -10,7 +10,7 @@ const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
 let actividades = [];
 let actividadVigente = [];
 let actividadSeleccionada = null;
-let categoriaActiva = 'Todas';
+let claseActiva = 'Todas';
 let vistaGrid = 'grid';
 let busqueda = '';
 
@@ -44,7 +44,6 @@ function toggleTheme() {
 
 function setTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  
   const isDark = theme === 'dark';
   
   const themeIcon = document.getElementById('themeIcon');
@@ -67,11 +66,11 @@ function verificarSesion() {
     const usuario = JSON.parse(sesion);
     if (loginModal) loginModal.classList.add('hidden');
     mostrarUsuario(usuario);
-    actualizarBottomNav(usuario);
+    actualizarBottomNav(true, usuario);
     cargarDatos();
   } else {
     if (loginModal) loginModal.classList.remove('hidden');
-    actualizarBottomNav(null);
+    actualizarBottomNav(false, null);
   }
 }
 
@@ -79,13 +78,11 @@ function mostrarUsuario(usuario) {
   const nombre = usuario.nombre || usuario.alias || 'Usuario';
   const inicial = nombre.charAt(0).toUpperCase();
   
-  // Header
   const headerGreeting = document.getElementById('headerGreeting');
   const avatarInitial = document.getElementById('avatarInitial');
   if (headerGreeting) headerGreeting.textContent = `¡Hola, ${nombre.split(' ')[0]}!`;
   if (avatarInitial) avatarInitial.textContent = inicial;
   
-  // Menu usuario
   const menuAvatarInitial = document.getElementById('menuAvatarInitial');
   const menuUserName = document.getElementById('menuUserName');
   const menuUserEmail = document.getElementById('menuUserEmail');
@@ -94,27 +91,27 @@ function mostrarUsuario(usuario) {
   if (menuUserEmail) menuUserEmail.textContent = usuario.email || `${usuario.alias || 'usuario'}@coaj.es`;
 }
 
-function actualizarBottomNav(usuario) {
+function actualizarBottomNav(logueado, usuario) {
   const navGuest = document.getElementById('bottomNavGuest');
   const navUser = document.getElementById('bottomNavUser');
   
-  if (!usuario) {
+  if (logueado && usuario) {
+    const nombre = usuario.nombre || usuario.alias || 'Usuario';
+    const inicial = nombre.charAt(0).toUpperCase();
+    const primerNombre = nombre.split(' ')[0];
+    
+    if (navGuest) navGuest.style.display = 'none';
+    if (navUser) {
+      navUser.style.display = 'flex';
+      const bottomAvatarInitial = document.getElementById('bottomAvatarInitial');
+      const bottomUserName = document.getElementById('bottomUserName');
+      if (bottomAvatarInitial) bottomAvatarInitial.textContent = inicial;
+      if (bottomUserName) bottomUserName.textContent = primerNombre;
+    }
+  } else {
     if (navGuest) navGuest.style.display = 'flex';
     if (navUser) navUser.style.display = 'none';
-    return;
   }
-  
-  const nombre = usuario.nombre || usuario.alias || 'Usuario';
-  const inicial = nombre.charAt(0).toUpperCase();
-  const primerNombre = nombre.split(' ')[0];
-  
-  if (navGuest) navGuest.style.display = 'none';
-  if (navUser) navUser.style.display = 'flex';
-  
-  const bottomAvatarInitial = document.getElementById('bottomAvatarInitial');
-  const bottomUserName = document.getElementById('bottomUserName');
-  if (bottomAvatarInitial) bottomAvatarInitial.textContent = inicial;
-  if (bottomUserName) bottomUserName.textContent = primerNombre;
 }
 
 function mostrarLoginModal() {
@@ -158,7 +155,7 @@ async function iniciarSesion(e) {
       localStorage.setItem('coajUsuario', JSON.stringify(data.usuario));
       document.getElementById('loginModal')?.classList.add('hidden');
       mostrarUsuario(data.usuario);
-      actualizarBottomNav(data.usuario);
+      actualizarBottomNav(true, data.usuario);
       cargarDatos();
       mostrarToast('¡Bienvenido!', 'success');
     } else {
@@ -166,7 +163,7 @@ async function iniciarSesion(e) {
     }
   } catch (err) {
     console.error('Login error:', err);
-    mostrarErrorLogin('Error de conexión. Intenta de nuevo.');
+    mostrarErrorLogin('Error de conexión');
   }
   
   if (btn) {
@@ -176,14 +173,11 @@ async function iniciarSesion(e) {
 }
 
 function entrarComoInvitado() {
-  localStorage.setItem('coajUsuario', JSON.stringify({ 
-    alias: 'invitado', 
-    nombre: 'Invitado' 
-  }));
-  
+  const usuario = { alias: 'invitado', nombre: 'Invitado' };
+  localStorage.setItem('coajUsuario', JSON.stringify(usuario));
   document.getElementById('loginModal')?.classList.add('hidden');
-  mostrarUsuario({ nombre: 'Invitado' });
-  actualizarBottomNav({ nombre: 'Invitado', alias: 'invitado' });
+  mostrarUsuario(usuario);
+  actualizarBottomNav(true, usuario);
   cargarDatos();
 }
 
@@ -192,7 +186,6 @@ function mostrarErrorLogin(msg) {
   if (errorDiv) {
     errorDiv.textContent = msg;
     errorDiv.style.display = 'block';
-    errorDiv.classList.add('show');
   }
 }
 
@@ -224,7 +217,6 @@ function cambiarVistaGrid(vista) {
   if (grid) grid.classList.toggle('list-view', vista === 'list');
 }
 
-// Cerrar menú al hacer click fuera
 document.addEventListener('click', (e) => {
   const menu = document.getElementById('userMenu');
   const avatar = document.getElementById('headerAvatar');
@@ -238,14 +230,12 @@ document.addEventListener('click', (e) => {
 });
 
 // ============================================
-// CARGAR DATOS (IGUAL QUE ORIGINAL)
+// CARGAR DATOS
 // ============================================
 async function cargarDatos() {
   const loading = document.getElementById('loading');
-  const empty = document.getElementById('emptyState');
   
   if (loading) loading.classList.remove('hidden');
-  if (empty) empty.classList.remove('active');
   
   try {
     const res = await fetch(`${API_BASE}/datos`);
@@ -254,9 +244,12 @@ async function cargarDatos() {
     actividades = data.actividades || [];
     actividadVigente = data.actividadVigente || [];
     
-    console.log('Actividades cargadas:', actividades.length);
+    console.log('✅ Actividades cargadas:', actividades.length);
+    console.log('✅ ActividadVigente:', actividadVigente.length);
+    
     if (actividades.length > 0) {
-      console.log('Ejemplo de actividad:', actividades[0]);
+      console.log('📋 Campos disponibles:', Object.keys(actividades[0]));
+      console.log('📋 Ejemplo:', actividades[0]);
     }
     
     if (loading) loading.classList.add('hidden');
@@ -266,7 +259,7 @@ async function cargarDatos() {
     } else {
       renderizarDestacadas();
       renderizarProximas();
-      renderizarCategorias();
+      renderizarClases();
       renderizarFiltros();
       renderizarTodas();
       
@@ -276,16 +269,16 @@ async function cargarDatos() {
       document.getElementById('seccionTodas')?.classList.remove('hidden');
     }
   } catch (err) {
-    console.error('Error cargando datos:', err);
+    console.error('❌ Error cargando datos:', err);
     if (loading) loading.classList.add('hidden');
     mostrarEmpty();
   }
 }
 
 // ============================================
-// ICONOS CATEGORÍA (DEL ORIGINAL)
+// ICONOS POR CLASE
 // ============================================
-function getIconoCategoria(cat) {
+function getIconoClase(clase) {
   const iconos = {
     'Deporte': '⚽',
     'Arte': '🎨',
@@ -297,9 +290,70 @@ function getIconoCategoria(cat) {
     'Cocina': '👨‍🍳',
     'Fotografía': '📷',
     'Gaming': '🎮',
+    'Formación': '📚',
+    'Taller': '🔧',
+    'Ocio': '🎉',
     'default': '🎯'
   };
-  return iconos[cat] || iconos.default;
+  return iconos[clase] || iconos.default;
+}
+
+// ============================================
+// OBTENER IMAGEN DE ACTIVIDAD
+// ============================================
+function getImagenActividad(a) {
+  // Buscar en varios campos posibles
+  if (a.Imagen && a.Imagen.trim()) return a.Imagen;
+  if (a['URL Actividad'] && a['URL Actividad'].trim()) return a['URL Actividad'];
+  if (a.Image && a.Image.trim()) return a.Image;
+  
+  // Buscar en actividadVigente por nombre
+  const vigente = actividadVigente.find(v => v.Actividad === a.Actividad);
+  if (vigente && vigente['URL Actividad']) return vigente['URL Actividad'];
+  
+  // Imagen por defecto según la clase
+  const imagenesDefault = {
+    'Deporte': 'https://images.unsplash.com/photo-1461896836934- voices-of-youth?w=400',
+    'Arte': 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400',
+    'Música': 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400',
+    'Tecnología': 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400',
+    'Danza': 'https://images.unsplash.com/photo-1508700929628-666bc8bd84ea?w=400',
+    'Teatro': 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=400',
+    'Formación': 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400',
+    'default': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'
+  };
+  
+  return imagenesDefault[a.Clase] || imagenesDefault.default;
+}
+
+// ============================================
+// FORMATEAR DÍAS
+// ============================================
+function formatearDias(dias) {
+  if (!dias) return 'Por definir';
+  return dias;
+}
+
+// ============================================
+// FORMATEAR FECHAS (Del - Al)
+// ============================================
+function formatearFechas(del, al) {
+  if (!del && !al) return 'Por definir';
+  
+  const formatear = (fecha) => {
+    if (!fecha) return '';
+    // Formato: MM/DD/YYYY o similar
+    const partes = fecha.split(' ')[0]; // Quitar hora si existe
+    return partes;
+  };
+  
+  const fechaDel = formatear(del);
+  const fechaAl = formatear(al);
+  
+  if (fechaDel && fechaAl) {
+    return `${fechaDel} - ${fechaAl}`;
+  }
+  return fechaDel || fechaAl || 'Por definir';
 }
 
 // ============================================
@@ -320,22 +374,15 @@ function renderizarProximas() {
   const proximas = actividades.slice(0, 6);
   container.innerHTML = proximas.map((a, i) => {
     const badgeClass = i === 0 ? 'badge-hoy' : i === 1 ? 'badge-manana' : 'badge-semana';
-    const badgeText = i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : obtenerDiaBadge(a.Día);
+    const badgeText = i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : (a.Días?.split(',')[0]?.trim() || 'Próximo');
     return crearCardCarousel(a, badgeClass, badgeText);
   }).join('');
 }
 
-function obtenerDiaBadge(dia) {
-  if (!dia) return 'Próximo';
-  const partes = dia.split(',');
-  return partes[0]?.trim() || 'Próximo';
-}
-
 function crearCardCarousel(a, badgeClass, badgeText) {
-  // Campos del original: Imagen, Actividad, Horario, Centro Juvenil, Día
-  const img = a.Imagen || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400';
-  const texto = badgeText || obtenerDiaBadge(a.Día);
-  const id = a.Id || a.Actividad;
+  const img = getImagenActividad(a);
+  const texto = badgeText || a.Días?.split(',')[0]?.trim() || 'Próximo';
+  const id = a['ID Actividad'] || a.Actividad;
   
   return `
     <div class="activity-card" onclick="abrirModal('${id}')">
@@ -346,8 +393,8 @@ function crearCardCarousel(a, badgeClass, badgeText) {
         <h3 class="activity-card-title">${a.Actividad || 'Sin título'}</h3>
         <div class="activity-card-meta">
           <div class="activity-card-meta-item">
-            <span class="material-symbols-outlined">schedule</span>
-            ${a.Horario || 'Por definir'}
+            <span class="material-symbols-outlined">calendar_today</span>
+            ${formatearDias(a.Días || a.Dias)}
           </div>
           <div class="activity-card-meta-item">
             <span class="material-symbols-outlined">location_on</span>
@@ -359,21 +406,21 @@ function crearCardCarousel(a, badgeClass, badgeText) {
   `;
 }
 
-function renderizarCategorias() {
+function renderizarClases() {
   const container = document.getElementById('categoriasGrid');
   if (!container) return;
   
-  // Contar por Categoría (campo del original)
-  const categorias = {};
+  // Contar por Clase (campo correcto del GAS)
+  const clases = {};
   actividades.forEach(a => {
-    const cat = a.Categoría || 'Otros';
-    categorias[cat] = (categorias[cat] || 0) + 1;
+    const clase = a.Clase || 'Otros';
+    clases[clase] = (clases[clase] || 0) + 1;
   });
   
-  container.innerHTML = Object.entries(categorias).map(([cat, count]) => `
-    <div class="category-card ${categoriaActiva === cat ? 'active' : ''}" onclick="filtrarPorCategoria('${cat}')">
-      <div class="category-icon">${getIconoCategoria(cat)}</div>
-      <div class="category-name">${cat}</div>
+  container.innerHTML = Object.entries(clases).map(([clase, count]) => `
+    <div class="category-card ${claseActiva === clase ? 'active' : ''}" onclick="filtrarPorClase('${clase}')">
+      <div class="category-icon">${getIconoClase(clase)}</div>
+      <div class="category-name">${clase}</div>
       <div class="category-count">${count} actividad${count !== 1 ? 'es' : ''}</div>
     </div>
   `).join('');
@@ -383,10 +430,10 @@ function renderizarFiltros() {
   const catContainer = document.getElementById('filtrosCategorias');
   if (!catContainer) return;
   
-  const categorias = ['Todas', ...new Set(actividades.map(a => a.Categoría).filter(Boolean))];
+  const clases = ['Todas', ...new Set(actividades.map(a => a.Clase).filter(Boolean))];
   
-  catContainer.innerHTML = categorias.map(cat => `
-    <button class="chip ${categoriaActiva === cat ? 'active' : ''}" onclick="filtrarPorCategoria('${cat}')">${cat}</button>
+  catContainer.innerHTML = clases.map(clase => `
+    <button class="chip ${claseActiva === clase ? 'active' : ''}" onclick="filtrarPorClase('${clase}')">${clase}</button>
   `).join('');
 }
 
@@ -396,9 +443,9 @@ function renderizarTodas() {
   
   let filtradas = actividades;
   
-  // Filtrar por Categoría
-  if (categoriaActiva !== 'Todas') {
-    filtradas = filtradas.filter(a => a.Categoría === categoriaActiva);
+  // Filtrar por Clase
+  if (claseActiva !== 'Todas') {
+    filtradas = filtradas.filter(a => a.Clase === claseActiva);
   }
   
   // Filtrar por búsqueda
@@ -406,8 +453,7 @@ function renderizarTodas() {
     const term = busqueda.toLowerCase();
     filtradas = filtradas.filter(a => 
       (a.Actividad || '').toLowerCase().includes(term) ||
-      (a.Descripción || '').toLowerCase().includes(term) ||
-      (a.Categoría || '').toLowerCase().includes(term) ||
+      (a.Clase || '').toLowerCase().includes(term) ||
       (a['Centro Juvenil'] || '').toLowerCase().includes(term)
     );
   }
@@ -423,33 +469,32 @@ function renderizarTodas() {
 }
 
 function crearCardGrid(a) {
-  // Campos del original: Id, Actividad, Categoría, Estado, Imagen, Horario, Día, Descripción
-  const img = a.Imagen || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400';
+  const img = getImagenActividad(a);
   const estado = a.Estado || 'Programado';
   const estadoClass = estado.toLowerCase().includes('desarrollo') ? 'desarrollo' 
                     : estado.toLowerCase().includes('final') ? 'finalizado' 
                     : 'programado';
-  const id = a.Id || a.Actividad;
+  const id = a['ID Actividad'] || a.Actividad;
   
   return `
     <div class="activity-grid-card" onclick="abrirModal('${id}')">
       <div class="activity-grid-image" style="background-image: url('${img}')"></div>
       <div class="activity-grid-content">
         <div class="activity-grid-badges">
-          ${a.Categoría ? `<span class="activity-badge badge-categoria">${a.Categoría}</span>` : ''}
+          ${a.Clase ? `<span class="activity-badge badge-categoria">${a.Clase}</span>` : ''}
           <span class="activity-badge badge-estado-${estadoClass}">${estado}</span>
         </div>
         <h3 class="activity-grid-title">${a.Actividad || 'Sin título'}</h3>
-        <p class="activity-grid-description">${a.Descripción || 'Descubre esta actividad en COAJ Madrid.'}</p>
+        <p class="activity-grid-description">${a['Centro Juvenil'] || 'Centro Juvenil COAJ Madrid'}</p>
         <div class="activity-grid-footer">
           <div class="activity-grid-info">
             <div class="activity-grid-info-item">
-              <span class="material-symbols-outlined">schedule</span>
-              ${a.Horario || 'Por definir'}
+              <span class="material-symbols-outlined">calendar_today</span>
+              ${formatearDias(a.Días || a.Dias)}
             </div>
             <div class="activity-grid-info-item">
-              <span class="material-symbols-outlined">calendar_today</span>
-              ${obtenerDiaBadge(a.Día)}
+              <span class="material-symbols-outlined">group</span>
+              ${a.Plazas || '∞'} plazas
             </div>
           </div>
           <button class="activity-grid-btn">Ver más</button>
@@ -470,16 +515,16 @@ function mostrarEmpty() {
 // ============================================
 // FILTROS Y BÚSQUEDA
 // ============================================
-function filtrarPorCategoria(categoria) {
-  categoriaActiva = categoria;
+function filtrarPorClase(clase) {
+  claseActiva = clase;
   
   document.querySelectorAll('.category-card').forEach(card => {
     const nombre = card.querySelector('.category-name')?.textContent;
-    card.classList.toggle('active', nombre === categoria);
+    card.classList.toggle('active', nombre === clase);
   });
   
   document.querySelectorAll('#filtrosCategorias .chip').forEach(chip => {
-    chip.classList.toggle('active', chip.textContent === categoria);
+    chip.classList.toggle('active', chip.textContent === clase);
   });
   
   renderizarTodas();
@@ -491,22 +536,25 @@ function buscarActividades() {
 }
 
 function limpiarFiltros() {
-  categoriaActiva = 'Todas';
+  claseActiva = 'Todas';
   busqueda = '';
   const searchInput = document.getElementById('searchInput');
   if (searchInput) searchInput.value = '';
-  renderizarCategorias();
+  renderizarClases();
   renderizarFiltros();
   renderizarTodas();
   document.getElementById('emptyState')?.classList.remove('active');
 }
 
 // ============================================
-// MODAL DETALLE (CAMPOS DEL ORIGINAL)
+// MODAL DETALLE
 // ============================================
 function abrirModal(id) {
-  // Buscar por Id o por Actividad (como en el original)
-  actividadSeleccionada = actividades.find(a => (a.Id || a.Actividad) === id);
+  // Buscar por ID Actividad o por nombre
+  actividadSeleccionada = actividades.find(a => 
+    (a['ID Actividad'] || a.Actividad) === id
+  );
+  
   if (!actividadSeleccionada) {
     console.error('Actividad no encontrada:', id);
     return;
@@ -518,10 +566,10 @@ function abrirModal(id) {
   // Imagen
   const modalImage = document.getElementById('modalImage');
   if (modalImage) {
-    modalImage.style.backgroundImage = `url('${a.Imagen || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600'}')`;
+    modalImage.style.backgroundImage = `url('${getImagenActividad(a)}')`;
   }
   
-  // Badges - Estado y Categoría
+  // Badges
   const estado = a.Estado || 'Programado';
   const estadoClass = estado.toLowerCase().includes('desarrollo') ? 'desarrollo' 
                     : estado.toLowerCase().includes('final') ? 'finalizado' 
@@ -530,18 +578,22 @@ function abrirModal(id) {
   const modalBadges = document.getElementById('modalBadges');
   if (modalBadges) {
     modalBadges.innerHTML = `
-      ${a.Categoría ? `<span class="activity-badge badge-categoria">${a.Categoría}</span>` : ''}
+      ${a.Clase ? `<span class="activity-badge badge-categoria">${a.Clase}</span>` : ''}
       <span class="activity-badge badge-estado-${estadoClass}">${estado}</span>
     `;
   }
   
-  // Título y Descripción
+  // Título
   const modalTitle = document.getElementById('modalTitle');
-  const modalDescription = document.getElementById('modalDescription');
   if (modalTitle) modalTitle.textContent = a.Actividad || 'Sin título';
-  if (modalDescription) modalDescription.textContent = a.Descripción || 'Sin descripción disponible.';
   
-  // Info Grid - CAMPOS EXACTOS DEL ORIGINAL
+  // Descripción
+  const modalDescription = document.getElementById('modalDescription');
+  if (modalDescription) {
+    modalDescription.textContent = `Actividad de ${a.Clase || 'formación'} en ${a['Centro Juvenil'] || 'COAJ Madrid'}`;
+  }
+  
+  // Info Grid - CAMPOS CORRECTOS DEL GAS
   const modalInfo = document.getElementById('modalInfo');
   if (modalInfo) {
     modalInfo.innerHTML = `
@@ -550,24 +602,24 @@ function abrirModal(id) {
         <strong>${a['Centro Juvenil'] || 'Por definir'}</strong>
       </div>
       <div class="modal-info-item">
-        <small><span class="material-symbols-outlined">calendar_today</span> Día</small>
-        <strong>${a.Día || 'Por definir'}</strong>
+        <small><span class="material-symbols-outlined">event</span> Días</small>
+        <strong>${formatearDias(a.Días || a.Dias)}</strong>
       </div>
       <div class="modal-info-item">
-        <small><span class="material-symbols-outlined">schedule</span> Horario</small>
-        <strong>${a.Horario || 'Por definir'}</strong>
+        <small><span class="material-symbols-outlined">date_range</span> Periodo</small>
+        <strong>${formatearFechas(a.Del, a.Al)}</strong>
       </div>
       <div class="modal-info-item">
         <small><span class="material-symbols-outlined">group</span> Plazas</small>
         <strong>${a.Plazas || 'Ilimitadas'}</strong>
       </div>
       <div class="modal-info-item">
-        <small><span class="material-symbols-outlined">cake</span> Edad</small>
-        <strong>${a.Edad || 'Todas'}</strong>
+        <small><span class="material-symbols-outlined">category</span> Clase</small>
+        <strong>${a.Clase || 'General'}</strong>
       </div>
       <div class="modal-info-item">
-        <small><span class="material-symbols-outlined">payments</span> Precio</small>
-        <strong>${a.Precio || 'Gratis'}</strong>
+        <small><span class="material-symbols-outlined">info</span> Estado</small>
+        <strong>${estado}</strong>
       </div>
     `;
   }
@@ -578,11 +630,9 @@ function abrirModal(id) {
     if (puedeInscribirse()) {
       btnInscribirse.innerHTML = '<span class="material-symbols-outlined">how_to_reg</span> Inscribirme';
       btnInscribirse.onclick = inscribirse;
-      btnInscribirse.style.display = 'flex';
     } else {
       btnInscribirse.innerHTML = '<span class="material-symbols-outlined">login</span> Inicia sesión';
       btnInscribirse.onclick = () => { cerrarModal(); mostrarLoginModal(); };
-      btnInscribirse.style.display = 'flex';
     }
   }
   
@@ -611,14 +661,14 @@ function puedeInscribirse() {
 }
 
 // ============================================
-// INSCRIPCIÓN (DEL ORIGINAL)
+// INSCRIPCIÓN
 // ============================================
 async function inscribirse() {
   if (!actividadSeleccionada) return;
   
   const sesion = localStorage.getItem('coajUsuario');
   if (!sesion) {
-    mostrarToast('Debes iniciar sesión para inscribirte', 'error');
+    mostrarToast('Debes iniciar sesión', 'error');
     return;
   }
   
@@ -696,7 +746,7 @@ function mostrarToast(mensaje, tipo = 'success') {
 }
 
 // ============================================
-// KEYBOARD - ESC para cerrar
+// KEYBOARD
 // ============================================
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
