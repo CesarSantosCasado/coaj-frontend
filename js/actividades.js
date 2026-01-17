@@ -1,16 +1,31 @@
 /**
- * COAJ Madrid - Actividades v4
- * Diseño profesional con UX mejorada
+ * COAJ Madrid - Actividades v5
  * 
- * Campos API (GAS):
- * - Actividad, Centro Juvenil, Clase, Estado
- * - Plazas, Días, Del, Al, ID Actividad
- * - actividadVigente: URL Actividad
+ * MEJORAS IMPLEMENTADAS:
+ * - Persistencia de datos con sessionStorage (no recarga si hay cache válido)
+ * - Configuración centralizada desde config.js
+ * - Navegación homologada
+ * 
+ * DEPENDENCIAS: config.js debe cargarse antes
  */
 
-const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
+// ============================================
+// VERIFICAR DEPENDENCIAS
+// ============================================
+if (typeof COAJ_CONFIG === 'undefined') {
+  console.error('❌ config.js debe cargarse antes de actividades.js');
+}
 
-// Estado global
+// ============================================
+// CONSTANTES (desde config)
+// ============================================
+const API_BASE = COAJ_CONFIG?.api?.base || 'https://coajmadrid-8273afef0255.herokuapp.com/api';
+const CACHE_KEY = COAJ_CONFIG?.cache?.key || 'coaj_actividades_cache';
+const CACHE_TTL = COAJ_CONFIG?.cache?.ttl || 5 * 60 * 1000;
+
+// ============================================
+// ESTADO GLOBAL
+// ============================================
 let actividades = [];
 let actividadVigente = [];
 let actividadSeleccionada = null;
@@ -22,6 +37,7 @@ let categoriaSeleccionada = null;
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
+  console.log('🚀 Inicializando COAJ Actividades...');
   initTheme();
   verificarSesion();
   warmup();
@@ -58,7 +74,7 @@ function setupEventListeners() {
 // TEMA CLARO/OSCURO
 // ============================================
 function initTheme() {
-  const saved = localStorage.getItem('coajTheme') || 'light';
+  const saved = localStorage.getItem(COAJ_CONFIG?.cache?.themeKey || 'coajTheme') || 'light';
   setTheme(saved);
 }
 
@@ -66,7 +82,7 @@ function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme');
   const next = current === 'dark' ? 'light' : 'dark';
   setTheme(next);
-  localStorage.setItem('coajTheme', next);
+  localStorage.setItem(COAJ_CONFIG?.cache?.themeKey || 'coajTheme', next);
 }
 
 function setTheme(theme) {
@@ -89,7 +105,7 @@ function setTheme(theme) {
 // AUTENTICACIÓN
 // ============================================
 function verificarSesion() {
-  const sesion = localStorage.getItem('coajUsuario');
+  const sesion = localStorage.getItem(COAJ_CONFIG?.cache?.userKey || 'coajUsuario');
   const loginModal = document.getElementById('loginModal');
   
   if (sesion) {
@@ -97,7 +113,7 @@ function verificarSesion() {
     loginModal?.classList.add('hidden');
     actualizarUIUsuario(usuario);
     actualizarBottomNav(true);
-    cargarDatos();
+    cargarDatos(); // Cargará desde cache si existe
   } else {
     loginModal?.classList.remove('hidden');
     actualizarBottomNav(false);
@@ -153,7 +169,6 @@ async function iniciarSesion(e) {
     return;
   }
   
-  // UI loading
   if (btn) {
     btn.disabled = true;
     btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Verificando...';
@@ -170,7 +185,7 @@ async function iniciarSesion(e) {
     const data = await res.json();
     
     if (data.success) {
-      localStorage.setItem('coajUsuario', JSON.stringify(data.usuario));
+      localStorage.setItem(COAJ_CONFIG?.cache?.userKey || 'coajUsuario', JSON.stringify(data.usuario));
       document.getElementById('loginModal')?.classList.add('hidden');
       actualizarUIUsuario(data.usuario);
       actualizarBottomNav(true);
@@ -183,7 +198,6 @@ async function iniciarSesion(e) {
     mostrarErrorLogin('Error de conexión. Intenta de nuevo.');
   }
   
-  // Reset button
   if (btn) {
     btn.disabled = false;
     btn.innerHTML = '<span class="material-symbols-outlined">login</span> Iniciar Sesión';
@@ -192,7 +206,7 @@ async function iniciarSesion(e) {
 
 function entrarComoInvitado() {
   const usuario = { alias: 'invitado', nombre: 'Invitado' };
-  localStorage.setItem('coajUsuario', JSON.stringify(usuario));
+  localStorage.setItem(COAJ_CONFIG?.cache?.userKey || 'coajUsuario', JSON.stringify(usuario));
   document.getElementById('loginModal')?.classList.add('hidden');
   actualizarUIUsuario(usuario);
   actualizarBottomNav(true);
@@ -208,15 +222,46 @@ function mostrarErrorLogin(mensaje) {
 }
 
 function cerrarSesion() {
-  localStorage.removeItem('coajUsuario');
+  localStorage.removeItem(COAJ_CONFIG?.cache?.userKey || 'coajUsuario');
+  // Limpiar cache al cerrar sesión
+  if (typeof CoajCache !== 'undefined') {
+    CoajCache.remove(CACHE_KEY);
+  }
   window.location.href = '../index.html';
 }
 
 // ============================================
-// CARGAR DATOS
+// CARGAR DATOS - CON PERSISTENCIA
 // ============================================
-async function cargarDatos() {
+async function cargarDatos(forceRefresh = false) {
   const loading = document.getElementById('loading');
+  
+  // ========================================
+  // 1. VERIFICAR CACHE (si no es refresh forzado)
+  // ========================================
+  if (!forceRefresh && typeof CoajCache !== 'undefined') {
+    const cached = CoajCache.get(CACHE_KEY, CACHE_TTL);
+    
+    if (cached) {
+      console.log('📦 Usando datos desde cache');
+      actividades = cached.actividades || [];
+      actividadVigente = cached.actividadVigente || [];
+      
+      if (loading) loading.classList.add('hidden');
+      
+      if (actividades.length === 0) {
+        document.getElementById('emptyState')?.classList.add('active');
+      } else {
+        renderizarTodo();
+      }
+      return; // No hacer petición al servidor
+    }
+  }
+
+  // ========================================
+  // 2. CARGAR DESDE API (cache vacío o expirado)
+  // ========================================
+  console.log('🌐 Cargando datos desde API...');
   if (loading) loading.classList.remove('hidden');
   
   try {
@@ -227,6 +272,16 @@ async function cargarDatos() {
     actividadVigente = data.actividadVigente || [];
     
     console.log('✅ Actividades cargadas:', actividades.length);
+    
+    // ========================================
+    // 3. GUARDAR EN CACHE
+    // ========================================
+    if (typeof CoajCache !== 'undefined') {
+      CoajCache.set(CACHE_KEY, {
+        actividades,
+        actividadVigente
+      });
+    }
     
     if (loading) loading.classList.add('hidden');
     
@@ -239,22 +294,38 @@ async function cargarDatos() {
     console.error('Error cargando datos:', err);
     if (loading) loading.classList.add('hidden');
     document.getElementById('emptyState')?.classList.add('active');
+    mostrarToast('Error al cargar actividades', 'error');
   }
 }
+
+/**
+ * Fuerza recarga de datos desde el servidor
+ * Llamar cuando el usuario solicite explícitamente actualizar
+ */
+function refrescarDatos() {
+  console.log('🔄 Refrescando datos...');
+  if (typeof CoajCache !== 'undefined') {
+    CoajCache.remove(CACHE_KEY);
+  }
+  cargarDatos(true);
+  mostrarToast('Actualizando actividades...', 'success');
+}
+
+// Exponer para uso externo (botón de refresh, etc.)
+window.refrescarDatos = refrescarDatos;
 
 function renderizarTodo() {
   renderizarProximas();
   renderizarCategorias();
   renderizarTodasLasActividades();
   
-  // Mostrar secciones
   ['upcomingSection', 'categoriesSection', 'allActivitiesSection'].forEach(id => {
     document.getElementById(id)?.classList.remove('hidden');
   });
 }
 
 // ============================================
-// UTILIDADES
+// UTILIDADES (usando config si está disponible)
 // ============================================
 function getImagenActividad(actividad) {
   const nombre = actividad.Actividad;
@@ -262,29 +333,17 @@ function getImagenActividad(actividad) {
   
   if (vigente?.['URL Actividad']) return vigente['URL Actividad'];
   
-  // Imágenes por defecto según categoría
-  const imagenes = {
-    'Deporte': 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400',
-    'Arte': 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400',
-    'Música': 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400',
-    'Tecnología': 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400',
-    'Danza': 'https://images.unsplash.com/photo-1508700929628-666bc8bd84ea?w=400',
-    'Teatro': 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=400',
-    'Formación': 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400',
-    'Idiomas': 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=400'
+  // Usar imágenes de config o fallback
+  const imagenes = COAJ_CONFIG?.categories?.images || {
+    'default': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'
   };
   
-  return imagenes[actividad.Clase] || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400';
+  return imagenes[actividad.Clase] || imagenes.default;
 }
 
 function getIconoCategoria(clase) {
-  const iconos = {
-    'Deporte': '⚽', 'Arte': '🎨', 'Música': '🎵', 'Tecnología': '💻',
-    'Idiomas': '🌍', 'Danza': '💃', 'Teatro': '🎭', 'Cocina': '👨‍🍳',
-    'Fotografía': '📷', 'Gaming': '🎮', 'Formación': '📚', 'Taller': '🔧',
-    'Ocio': '🎉'
-  };
-  return iconos[clase] || '🎯';
+  const iconos = COAJ_CONFIG?.categories?.icons || { 'default': '🎯' };
+  return iconos[clase] || iconos.default;
 }
 
 function getEstadoClass(estado) {
@@ -344,14 +403,12 @@ function renderizarCategorias() {
   const container = document.getElementById('categoriesGrid');
   if (!container) return;
   
-  // Contar actividades por categoría
   const categorias = {};
   actividades.forEach(a => {
     const cat = a.Clase || 'Otros';
     categorias[cat] = (categorias[cat] || 0) + 1;
   });
   
-  // Ordenar por cantidad
   const sorted = Object.entries(categorias).sort((a, b) => b[1] - a[1]);
   
   container.innerHTML = sorted.map(([cat, count]) => `
@@ -447,7 +504,6 @@ function buscarActividades() {
   
   section.classList.remove('hidden');
   
-  // Ocultar otras secciones
   ['upcomingSection', 'categoriesSection', 'allActivitiesSection'].forEach(id => {
     document.getElementById(id)?.classList.add('hidden');
   });
@@ -459,7 +515,6 @@ function cerrarBusqueda() {
   
   document.getElementById('searchResults')?.classList.add('hidden');
   
-  // Mostrar secciones
   ['upcomingSection', 'categoriesSection', 'allActivitiesSection'].forEach(id => {
     document.getElementById(id)?.classList.remove('hidden');
   });
@@ -473,7 +528,6 @@ function abrirModalCategoria(categoria) {
   
   const filtradas = actividades.filter(a => (a.Clase || 'Otros') === categoria);
   
-  // Actualizar modal
   document.getElementById('categoryModalIcon').textContent = getIconoCategoria(categoria);
   document.getElementById('categoryModalName').textContent = categoria;
   document.getElementById('categoryModalCount').textContent = filtradas.length;
@@ -483,7 +537,6 @@ function abrirModalCategoria(categoria) {
     lista.innerHTML = filtradas.map(a => crearItemLista(a)).join('');
   }
   
-  // Mostrar modal
   document.getElementById('categoryOverlay')?.classList.add('active');
   document.getElementById('categoryModal')?.classList.add('active');
   document.body.style.overflow = 'hidden';
@@ -509,10 +562,8 @@ function abrirModalDetalle(id) {
   const a = actividadSeleccionada;
   const modal = document.getElementById('detailModal');
   
-  // Imagen
   document.getElementById('detailImage').style.backgroundImage = `url('${getImagenActividad(a)}')`;
   
-  // Badges
   const estado = a.Estado || 'Programado';
   const estadoClass = getEstadoClass(estado);
   
@@ -521,12 +572,10 @@ function abrirModalDetalle(id) {
     <span class="detail-status-badge status-${estadoClass}">${estado}</span>
   `;
   
-  // Contenido
   document.getElementById('detailTitle').textContent = a.Actividad || 'Sin título';
   document.getElementById('detailDescription').textContent = 
     `Actividad de ${a.Clase || 'formación'} en ${a['Centro Juvenil'] || 'COAJ Madrid'}. Únete y participa en esta experiencia única.`;
   
-  // Info grid
   document.getElementById('detailInfo').innerHTML = `
     <div class="detail-info-item">
       <span class="material-symbols-outlined">location_on</span>
@@ -558,7 +607,6 @@ function abrirModalDetalle(id) {
     </div>
   `;
   
-  // Botón de acción
   const btn = document.getElementById('detailActionBtn');
   if (puedeInscribirse()) {
     btn.innerHTML = '<span class="material-symbols-outlined">how_to_reg</span> Inscribirme';
@@ -568,7 +616,6 @@ function abrirModalDetalle(id) {
     btn.onclick = () => { cerrarModalDetalle(); mostrarLoginModal(); };
   }
   
-  // Mostrar
   modal?.classList.add('active');
   document.body.style.overflow = 'hidden';
 }
@@ -580,7 +627,7 @@ function cerrarModalDetalle() {
 }
 
 function puedeInscribirse() {
-  const sesion = localStorage.getItem('coajUsuario');
+  const sesion = localStorage.getItem(COAJ_CONFIG?.cache?.userKey || 'coajUsuario');
   if (!sesion) return false;
   return JSON.parse(sesion).alias !== 'invitado';
 }
@@ -591,7 +638,7 @@ function puedeInscribirse() {
 async function inscribirse() {
   if (!actividadSeleccionada) return;
   
-  const sesion = localStorage.getItem('coajUsuario');
+  const sesion = localStorage.getItem(COAJ_CONFIG?.cache?.userKey || 'coajUsuario');
   if (!sesion) {
     mostrarToast('Inicia sesión para inscribirte', 'error');
     return;
