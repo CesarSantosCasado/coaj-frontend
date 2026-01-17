@@ -8,187 +8,362 @@
   <link rel="stylesheet" href="css/home.css">
 </head>
 <body>
-  <!-- BACKGROUND -->
-  <div class="animated-bg"></div>
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
-  <div class="particles" id="particles"></div>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-container">
+      <a href="/" class="header-logo">
+        <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ Madrid">
+        <span>COAJ Madrid</span>
+      </a>
+      
+      <nav class="header-nav" id="headerNav">
+        <a href="pages/eventos.html">Eventos</a>
+        <a href="pages/actividades.html">Actividades</a>
+        <a href="pages/exposiciones.html">Exposiciones</a>
+      </nav>
 
-  <!-- HEADER CON AUTH -->
-  <header class="main-header">
-    <div class="header-logo">
-      <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ">
-      <span>COAJ Madrid</span>
-    </div>
-    <div class="header-auth" id="headerAuth">
-      <button class="btn-auth btn-login-header" onclick="abrirModal('login')">Iniciar Sesión</button>
-      <button class="btn-auth btn-registro-header" onclick="abrirModal('registro')">Crear Cuenta</button>
-    </div>
-    <div class="header-user" id="headerUser" style="display:none;">
-      <span id="nombreUsuario"></span>
-      <button class="btn-logout" onclick="cerrarSesion()">Salir</button>
+      <div class="header-auth" id="headerAuth">
+        <button class="btn-ghost" onclick="abrirModal('login')">Iniciar Sesión</button>
+        <button class="btn-primary" onclick="abrirModal('registro')">Crear Cuenta</button>
+      </div>
+
+      <div class="header-user" id="headerUser" style="display:none;">
+        <div class="user-avatar" id="userAvatar">
+          <span id="userInitial">U</span>
+        </div>
+        <span class="user-name" id="nombreUsuario"></span>
+        <button class="btn-ghost btn-sm" onclick="cerrarSesion()">Salir</button>
+      </div>
     </div>
   </header>
 
-  <!-- MAIN -->
-  <div class="container">
-    <div class="logo-section">
-      <div class="logo-container">
-        <div class="logo-glow"></div>
-        <div class="logo">
-          <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ Madrid">
-        </div>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="hero-gradient"></div>
+      <div class="hero-pattern"></div>
+    </div>
+    
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        Red de Centros Juveniles de Madrid
       </div>
-      <h1 class="title">COAJ Madrid</h1>
-      <p class="subtitle">Portal de Gestión Juvenil</p>
-      <div class="stats-bar">
-        <div class="stat"><span class="stat-number">9+</span><span class="stat-label">Centros</span></div>
-        <div class="stat"><span class="stat-number">200+</span><span class="stat-label">Actividades</span></div>
-        <div class="stat"><span class="stat-number">10,000+</span><span class="stat-label">Jóvenes</span></div>
-      </div>
-    </div>
-
-    <div class="welcome-section">
-      <h2 class="welcome-title">¡Bienvenido a COAJ Madrid! 🎉</h2>
-      <p class="welcome-text">Somos la red de Centros de Ocio y Asesoramiento Juvenil de Madrid, un espacio donde los jóvenes encuentran apoyo, diversión y oportunidades.</p>
-      <div class="welcome-cta">Elige una opción para comenzar</div>
-    </div>
-
-    <div class="cards-grid">
-      <a href="pages/eventos.html" class="card">
-        <div class="card-icon">📅</div>
-        <h2 class="card-title">Eventos</h2>
-        <p class="card-description">Explora todos los eventos especiales.</p>
-        <span class="card-arrow">Ver Eventos →</span>
-      </a>
-      <a href="pages/actividades.html" class="card">
-        <div class="card-icon">🎯</div>
-        <h2 class="card-title">Actividades</h2>
-        <p class="card-description">Descubre las actividades semanales.</p>
-        <span class="card-arrow">Ver Actividades →</span>
-      </a>
-      <a href="pages/alta-usuarios.html" class="card">
-        <div class="card-icon">👤</div>
-        <h2 class="card-title">Alta de Usuarios</h2>
-        <p class="card-description">Registra nuevos usuarios.</p>
-        <span class="card-arrow">Acceder →</span>
-      </a>
-    </div>
-
-    <footer class="footer">
-      <p>© 2026 COAJ Madrid</p>
-      <p>Desarrollado con ❤️ para la comunidad juvenil</p>
-    </footer>
-  </div>
-
-  <!-- MODAL AUTH -->
-  <div class="modal-overlay" id="modalAuth" onclick="cerrarModalAuth(event)">
-    <div class="modal-auth" onclick="event.stopPropagation()">
-      <button class="modal-close" onclick="cerrarModalAuth()">✕</button>
       
-      <!-- TABS -->
-      <div class="auth-tabs">
-        <button class="auth-tab active" id="tabLogin" onclick="cambiarTab('login')">Iniciar Sesión</button>
-        <button class="auth-tab" id="tabRegistro" onclick="cambiarTab('registro')">Crear Cuenta</button>
+      <h1 class="hero-title">
+        Tu espacio para<br>
+        <span class="text-gradient">crecer y disfrutar</span>
+      </h1>
+      
+      <p class="hero-subtitle">
+        Descubre actividades, eventos y talleres diseñados para jóvenes. 
+        Más de 200 actividades en 9 centros de Madrid.
+      </p>
+
+      <div class="hero-actions">
+        <a href="pages/actividades.html" class="btn-primary btn-lg">
+          <span>Explorar Actividades</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        <a href="pages/eventos.html" class="btn-outline btn-lg">Ver Eventos</a>
       </div>
 
-      <!-- LOGIN FORM -->
-      <form class="auth-form" id="formLogin" onsubmit="hacerLogin(event)">
-        <div class="auth-header">
-          <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ" class="auth-logo">
-          <h2>¡Bienvenido de vuelta!</h2>
-          <p>Ingresa tus credenciales</p>
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-number">9+</span>
+          <span class="stat-label">Centros</span>
         </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-number">200+</span>
+          <span class="stat-label">Actividades</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-number">10k+</span>
+          <span class="stat-label">Jóvenes</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-image">
+      <div class="hero-card hero-card-1">
+        <div class="card-icon">🎨</div>
+        <span>Arte y Cultura</span>
+      </div>
+      <div class="hero-card hero-card-2">
+        <div class="card-icon">⚽</div>
+        <span>Deporte</span>
+      </div>
+      <div class="hero-card hero-card-3">
+        <div class="card-icon">🎵</div>
+        <span>Música</span>
+      </div>
+      <div class="hero-logo-float">
+        <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ">
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICIOS -->
+  <section class="services">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Nuestros Servicios</span>
+        <h2 class="section-title">Todo lo que necesitas en un solo lugar</h2>
+      </div>
+
+      <div class="services-grid">
+        <a href="pages/eventos.html" class="service-card">
+          <div class="service-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <h3>Eventos</h3>
+          <p>Fiestas, festivales, conciertos y eventos especiales durante todo el año.</p>
+          <span class="service-link">
+            Ver eventos
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </span>
+        </a>
+
+        <a href="pages/actividades.html" class="service-card">
+          <div class="service-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polygon points="10 8 16 12 10 16 10 8"></polygon>
+            </svg>
+          </div>
+          <h3>Actividades</h3>
+          <p>Talleres semanales de arte, deporte, música, tecnología y mucho más.</p>
+          <span class="service-link">
+            Ver actividades
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </span>
+        </a>
+
+        <a href="pages/exposiciones.html" class="service-card">
+          <div class="service-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+          </div>
+          <h3>Exposiciones</h3>
+          <p>Muestras artísticas y culturales de jóvenes talentos madrileños.</p>
+          <span class="service-link">
+            Ver exposiciones
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </span>
+        </a>
+
+        <a href="pages/alta-usuarios.html" class="service-card">
+          <div class="service-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="8.5" cy="7" r="4"></circle>
+              <line x1="20" y1="8" x2="20" y2="14"></line>
+              <line x1="23" y1="11" x2="17" y2="11"></line>
+            </svg>
+          </div>
+          <h3>Registro</h3>
+          <p>Únete a nuestra comunidad y accede a todas las actividades.</p>
+          <span class="service-link">
+            Registrarse
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="container">
+      <div class="cta-content">
+        <h2>¿Listo para empezar?</h2>
+        <p>Regístrate gratis y descubre todo lo que COAJ tiene para ti.</p>
+        <button class="btn-white btn-lg" onclick="abrirModal('registro')">
+          Crear cuenta gratis
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ Madrid">
+          <p>Red de Centros de Ocio y Asesoramiento Juvenil de Madrid.</p>
+        </div>
+        <div class="footer-links">
+          <a href="pages/eventos.html">Eventos</a>
+          <a href="pages/actividades.html">Actividades</a>
+          <a href="pages/exposiciones.html">Exposiciones</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 COAJ Madrid. Todos los derechos reservados.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- MODAL LOGIN/REGISTRO -->
+  <div class="modal-overlay" id="modalAuth" onclick="cerrarModalAuth(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="cerrarModalAuth()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <!-- TABS -->
+      <div class="modal-tabs">
+        <button class="tab active" id="tabLogin" onclick="cambiarTab('login')">Iniciar Sesión</button>
+        <button class="tab" id="tabRegistro" onclick="cambiarTab('registro')">Crear Cuenta</button>
+      </div>
+
+      <!-- LOGIN -->
+      <form class="modal-form" id="formLogin" onsubmit="hacerLogin(event)">
+        <div class="modal-header">
+          <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ" class="modal-logo">
+          <h2>¡Hola de nuevo!</h2>
+          <p>Ingresa tus datos para continuar</p>
+        </div>
+
         <div class="form-group">
-          <label>Alias</label>
-          <input type="text" id="loginAlias" placeholder="Tu alias de usuario" required>
+          <label for="loginAlias">Alias</label>
+          <input type="text" id="loginAlias" placeholder="Tu nombre de usuario" required>
         </div>
+
         <div class="form-group">
-          <label>Contraseña</label>
-          <input type="password" id="loginPassword" placeholder="Tu contraseña" required>
+          <label for="loginPassword">Contraseña</label>
+          <div class="input-password">
+            <input type="password" id="loginPassword" placeholder="Tu contraseña" required>
+            <button type="button" class="toggle-password" onclick="togglePassword('loginPassword', this)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
         </div>
-        <div class="auth-error" id="loginError"></div>
-        <button type="submit" class="btn-submit" id="btnLogin">Iniciar Sesión</button>
+
+        <div class="form-error" id="loginError"></div>
+
+        <button type="submit" class="btn-primary btn-full" id="btnLogin">
+          Iniciar Sesión
+        </button>
+
+        <div class="form-footer">
+          <p>¿No tienes cuenta? <button type="button" onclick="cambiarTab('registro')">Regístrate</button></p>
+        </div>
       </form>
 
-      <!-- REGISTRO FORM -->
-      <form class="auth-form" id="formRegistro" style="display:none;" onsubmit="hacerRegistro(event)">
-        <div class="auth-header">
-          <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ" class="auth-logo">
+      <!-- REGISTRO -->
+      <form class="modal-form" id="formRegistro" style="display:none;" onsubmit="hacerRegistro(event)">
+        <div class="modal-header">
+          <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ" class="modal-logo">
           <h2>¡Únete a COAJ!</h2>
           <p>Crea tu cuenta en segundos</p>
         </div>
-        
-        <div class="form-row">
-          <div class="form-group">
-            <label>Nombre completo *</label>
-            <input type="text" id="regNombre" placeholder="Nombre y apellidos" required oninput="generarAliasSugerido()">
+
+        <div class="form-scroll">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="regNombre">Nombre completo *</label>
+              <input type="text" id="regNombre" placeholder="Tu nombre" required oninput="generarAliasSugerido()">
+            </div>
+            <div class="form-group">
+              <label for="regEmail">Email *</label>
+              <input type="email" id="regEmail" placeholder="tu@email.com" required>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Email *</label>
-            <input type="email" id="regEmail" placeholder="tu@email.com" required>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="regAlias">Alias *</label>
+              <input type="text" id="regAlias" placeholder="Tu usuario único" required>
+              <span class="input-hint" id="aliasStatus"></span>
+            </div>
+            <div class="form-group">
+              <label for="regPassword">Contraseña *</label>
+              <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" required minlength="6">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="regFecha">Fecha de nacimiento</label>
+              <input type="date" id="regFecha">
+            </div>
+            <div class="form-group">
+              <label for="regSexo">Sexo</label>
+              <select id="regSexo">
+                <option value="">Selecciona</option>
+                <option value="Hombre">Hombre</option>
+                <option value="Mujer">Mujer</option>
+                <option value="Prefiero no decirlo">Prefiero no decirlo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="regMovil">Móvil</label>
+              <input type="tel" id="regMovil" placeholder="612 345 678">
+            </div>
+            <div class="form-group">
+              <label for="regMunicipio">Municipio</label>
+              <select id="regMunicipio">
+                <option value="">Selecciona</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="regDistrito">Distrito</label>
+              <select id="regDistrito" onchange="filtrarBarrios()">
+                <option value="">Selecciona</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="regBarrio">Barrio</label>
+              <select id="regBarrio" disabled>
+                <option value="">Primero selecciona distrito</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Alias *</label>
-            <input type="text" id="regAlias" placeholder="Tu alias único" required>
-            <div class="alias-status" id="aliasStatus"></div>
-          </div>
-          <div class="form-group">
-            <label>Contraseña *</label>
-            <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" required minlength="6">
-          </div>
-        </div>
+        <div class="form-error" id="registroError"></div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Fecha nacimiento</label>
-            <input type="date" id="regFecha">
-          </div>
-          <div class="form-group">
-            <label>Sexo</label>
-            <select id="regSexo">
-              <option value="">Selecciona</option>
-              <option value="Hombre">Hombre</option>
-              <option value="Mujer">Mujer</option>
-              <option value="Prefiero no decirlo">Prefiero no decirlo</option>
-            </select>
-          </div>
-        </div>
+        <button type="submit" class="btn-secondary btn-full" id="btnRegistro">
+          Crear Cuenta
+        </button>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Móvil</label>
-            <input type="tel" id="regMovil" placeholder="Teléfono">
-          </div>
-          <div class="form-group">
-            <label>Municipio</label>
-            <select id="regMunicipio">
-              <option value="">Selecciona</option>
-            </select>
-          </div>
+        <div class="form-footer">
+          <p>¿Ya tienes cuenta? <button type="button" onclick="cambiarTab('login')">Inicia sesión</button></p>
         </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Distrito</label>
-            <select id="regDistrito" onchange="filtrarBarrios()">
-              <option value="">Selecciona</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Barrio</label>
-            <select id="regBarrio" disabled>
-              <option value="">Primero selecciona distrito</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="auth-error" id="registroError"></div>
-        <button type="submit" class="btn-submit btn-registro" id="btnRegistro">Crear Cuenta</button>
       </form>
     </div>
   </div>
