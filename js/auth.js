@@ -1,4 +1,10 @@
+// ============================================
+// COAJ MADRID - AUTH.JS
+// Sistema de autenticación
+// ============================================
+
 const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
+
 let catalogos = { municipios: [], distritos: [], barrios: [] };
 let aliasTimeout = null;
 
@@ -14,16 +20,27 @@ function verificarSesion() {
 }
 
 function mostrarUsuarioLogueado(usuario) {
-  document.getElementById('headerAuth').style.display = 'none';
-  document.getElementById('headerUser').style.display = 'flex';
-  document.getElementById('nombreUsuario').textContent = usuario.nombre;
+  const headerAuth = document.getElementById('headerAuth');
+  const headerUser = document.getElementById('headerUser');
+  const nombreUsuario = document.getElementById('nombreUsuario');
+  const userInitial = document.getElementById('userInitial');
+  
+  if (headerAuth) headerAuth.style.display = 'none';
+  if (headerUser) headerUser.style.display = 'flex';
+  if (nombreUsuario) nombreUsuario.textContent = usuario.nombre || usuario.alias;
+  if (userInitial) userInitial.textContent = (usuario.nombre || usuario.alias || 'U').charAt(0).toUpperCase();
 }
 
 function cerrarSesion() {
   localStorage.removeItem('coajUsuario');
-  document.getElementById('headerAuth').style.display = 'flex';
-  document.getElementById('headerUser').style.display = 'none';
-  toast('Sesión cerrada', 'success');
+  
+  const headerAuth = document.getElementById('headerAuth');
+  const headerUser = document.getElementById('headerUser');
+  
+  if (headerAuth) headerAuth.style.display = 'flex';
+  if (headerUser) headerUser.style.display = 'none';
+  
+  toast('Sesión cerrada correctamente', 'success');
 }
 
 // ============================================
@@ -31,36 +48,62 @@ function cerrarSesion() {
 // ============================================
 function abrirModal(tipo) {
   const modal = document.getElementById('modalAuth');
+  if (!modal) return;
+  
   modal.classList.add('active');
   document.body.style.overflow = 'hidden';
   cambiarTab(tipo);
-  if (tipo === 'registro') cargarCatalogos();
+  
+  if (tipo === 'registro') {
+    cargarCatalogos();
+  }
 }
 
 function cerrarModalAuth(e) {
   if (e && e.target !== e.currentTarget) return;
+  
   const modal = document.getElementById('modalAuth');
+  if (!modal) return;
+  
   modal.classList.remove('active');
   document.body.style.overflow = '';
   limpiarForms();
 }
 
 function cambiarTab(tab) {
-  document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
-  document.getElementById('tabRegistro').classList.toggle('active', tab === 'registro');
-  document.getElementById('formLogin').style.display = tab === 'login' ? 'block' : 'none';
-  document.getElementById('formRegistro').style.display = tab === 'registro' ? 'block' : 'none';
-  if (tab === 'registro') cargarCatalogos();
+  const tabLogin = document.getElementById('tabLogin');
+  const tabRegistro = document.getElementById('tabRegistro');
+  const formLogin = document.getElementById('formLogin');
+  const formRegistro = document.getElementById('formRegistro');
+  
+  if (tabLogin) tabLogin.classList.toggle('active', tab === 'login');
+  if (tabRegistro) tabRegistro.classList.toggle('active', tab === 'registro');
+  if (formLogin) formLogin.style.display = tab === 'login' ? 'block' : 'none';
+  if (formRegistro) formRegistro.style.display = tab === 'registro' ? 'block' : 'none';
+  
+  if (tab === 'registro') {
+    cargarCatalogos();
+  }
 }
 
 function limpiarForms() {
-  document.getElementById('formLogin').reset();
-  document.getElementById('formRegistro').reset();
-  document.getElementById('loginError').classList.remove('show');
-  document.getElementById('registroError').classList.remove('show');
-  document.getElementById('aliasStatus').textContent = '';
-  document.getElementById('regBarrio').disabled = true;
-  document.getElementById('regBarrio').innerHTML = '<option value="">Primero selecciona distrito</option>';
+  const formLogin = document.getElementById('formLogin');
+  const formRegistro = document.getElementById('formRegistro');
+  const loginError = document.getElementById('loginError');
+  const registroError = document.getElementById('registroError');
+  const aliasStatus = document.getElementById('aliasStatus');
+  const regBarrio = document.getElementById('regBarrio');
+  
+  if (formLogin) formLogin.reset();
+  if (formRegistro) formRegistro.reset();
+  if (loginError) loginError.classList.remove('show');
+  if (registroError) registroError.classList.remove('show');
+  if (aliasStatus) aliasStatus.textContent = '';
+  
+  if (regBarrio) {
+    regBarrio.disabled = true;
+    regBarrio.innerHTML = '<option value="">Primero selecciona distrito</option>';
+  }
 }
 
 // ============================================
@@ -68,8 +111,9 @@ function limpiarForms() {
 // ============================================
 async function hacerLogin(e) {
   e.preventDefault();
-  const alias = document.getElementById('loginAlias').value.trim();
-  const password = document.getElementById('loginPassword').value;
+  
+  const alias = document.getElementById('loginAlias')?.value.trim();
+  const password = document.getElementById('loginPassword')?.value;
   const btn = document.getElementById('btnLogin');
   const errorDiv = document.getElementById('loginError');
   
@@ -78,9 +122,12 @@ async function hacerLogin(e) {
     return;
   }
 
-  btn.disabled = true;
-  btn.textContent = 'Verificando...';
-  errorDiv.classList.remove('show');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Verificando...';
+  }
+  
+  if (errorDiv) errorDiv.classList.remove('show');
 
   try {
     const res = await fetch(`${API_BASE}/login`, {
@@ -88,22 +135,26 @@ async function hacerLogin(e) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ alias, contrasena: password })
     });
+    
     const data = await res.json();
 
     if (data.success) {
       localStorage.setItem('coajUsuario', JSON.stringify(data.usuario));
       mostrarUsuarioLogueado(data.usuario);
       cerrarModalAuth();
-      toast(`¡Bienvenido, ${data.usuario.nombre}!`, 'success');
+      toast(`¡Bienvenido, ${data.usuario.nombre || data.usuario.alias}!`, 'success');
     } else {
       mostrarError(errorDiv, data.message || 'Credenciales incorrectas');
     }
   } catch (err) {
-    mostrarError(errorDiv, 'Error de conexión');
+    console.error('Login error:', err);
+    mostrarError(errorDiv, 'Error de conexión. Intenta de nuevo.');
   }
 
-  btn.disabled = false;
-  btn.textContent = 'Iniciar Sesión';
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = 'Iniciar Sesión';
+  }
 }
 
 // ============================================
@@ -111,20 +162,21 @@ async function hacerLogin(e) {
 // ============================================
 async function hacerRegistro(e) {
   e.preventDefault();
+  
   const btn = document.getElementById('btnRegistro');
   const errorDiv = document.getElementById('registroError');
   
   const datos = {
-    usuario: document.getElementById('regNombre').value.trim(),
-    email: document.getElementById('regEmail').value.trim(),
-    alias: document.getElementById('regAlias').value.trim(),
-    contrasena: document.getElementById('regPassword').value,
-    fechaNacimiento: document.getElementById('regFecha').value,
-    sexo: document.getElementById('regSexo').value,
-    movil: document.getElementById('regMovil').value.trim(),
-    municipio: document.getElementById('regMunicipio').value,
-    distrito: document.getElementById('regDistrito').value,
-    direccion: document.getElementById('regBarrio').value
+    usuario: document.getElementById('regNombre')?.value.trim(),
+    email: document.getElementById('regEmail')?.value.trim(),
+    alias: document.getElementById('regAlias')?.value.trim(),
+    contrasena: document.getElementById('regPassword')?.value,
+    fechaNacimiento: document.getElementById('regFecha')?.value,
+    sexo: document.getElementById('regSexo')?.value,
+    movil: document.getElementById('regMovil')?.value.trim(),
+    municipio: document.getElementById('regMunicipio')?.value,
+    distrito: document.getElementById('regDistrito')?.value,
+    direccion: document.getElementById('regBarrio')?.value
   };
 
   if (!datos.usuario || !datos.email || !datos.alias || !datos.contrasena) {
@@ -137,9 +189,12 @@ async function hacerRegistro(e) {
     return;
   }
 
-  btn.disabled = true;
-  btn.textContent = 'Creando cuenta...';
-  errorDiv.classList.remove('show');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Creando cuenta...';
+  }
+  
+  if (errorDiv) errorDiv.classList.remove('show');
 
   try {
     const res = await fetch(`${API_BASE}/registro`, {
@@ -147,11 +202,14 @@ async function hacerRegistro(e) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(datos)
     });
+    
     const data = await res.json();
 
     if (data.success) {
-      // Auto login
-      localStorage.setItem('coajUsuario', JSON.stringify({ alias: datos.alias, nombre: datos.usuario }));
+      localStorage.setItem('coajUsuario', JSON.stringify({ 
+        alias: datos.alias, 
+        nombre: datos.usuario 
+      }));
       mostrarUsuarioLogueado({ alias: datos.alias, nombre: datos.usuario });
       cerrarModalAuth();
       toast('¡Cuenta creada exitosamente!', 'success');
@@ -159,18 +217,21 @@ async function hacerRegistro(e) {
       mostrarError(errorDiv, data.message || 'Error al registrar');
     }
   } catch (err) {
-    mostrarError(errorDiv, 'Error de conexión');
+    console.error('Registro error:', err);
+    mostrarError(errorDiv, 'Error de conexión. Intenta de nuevo.');
   }
 
-  btn.disabled = false;
-  btn.textContent = 'Crear Cuenta';
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = 'Crear Cuenta';
+  }
 }
 
 // ============================================
 // ALIAS SUGERIDO
 // ============================================
 function generarAliasSugerido() {
-  const nombre = document.getElementById('regNombre').value.trim();
+  const nombre = document.getElementById('regNombre')?.value.trim();
   if (!nombre || nombre.length < 3) return;
 
   const partes = nombre.toLowerCase().split(' ').filter(p => p.length > 0);
@@ -182,10 +243,14 @@ function generarAliasSugerido() {
     alias = partes[0] + Math.floor(Math.random() * 99);
   }
 
-  alias = alias.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9.]/g, '');
+  alias = alias
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9.]/g, '');
   
-  if (alias) {
-    document.getElementById('regAlias').value = alias;
+  const regAlias = document.getElementById('regAlias');
+  if (alias && regAlias) {
+    regAlias.value = alias;
     verificarAliasDisponible(alias);
   }
 }
@@ -195,12 +260,14 @@ function verificarAliasDisponible(alias) {
   const statusDiv = document.getElementById('aliasStatus');
   
   if (!alias || alias.length < 3) {
-    statusDiv.textContent = '';
+    if (statusDiv) statusDiv.textContent = '';
     return;
   }
 
-  statusDiv.textContent = 'Verificando...';
-  statusDiv.className = 'alias-status verificando';
+  if (statusDiv) {
+    statusDiv.textContent = 'Verificando...';
+    statusDiv.className = 'input-hint verificando';
+  }
 
   aliasTimeout = setTimeout(async () => {
     try {
@@ -209,27 +276,23 @@ function verificarAliasDisponible(alias) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ alias })
       });
+      
       const data = await res.json();
 
-      if (data.disponible) {
-        statusDiv.textContent = '✓ Disponible';
-        statusDiv.className = 'alias-status disponible';
-      } else {
-        statusDiv.textContent = '✗ Ya está en uso';
-        statusDiv.className = 'alias-status ocupado';
+      if (statusDiv) {
+        if (data.disponible) {
+          statusDiv.textContent = '✓ Disponible';
+          statusDiv.className = 'input-hint disponible';
+        } else {
+          statusDiv.textContent = '✗ Ya está en uso';
+          statusDiv.className = 'input-hint ocupado';
+        }
       }
     } catch {
-      statusDiv.textContent = '';
+      if (statusDiv) statusDiv.textContent = '';
     }
   }, 500);
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  const aliasInput = document.getElementById('regAlias');
-  if (aliasInput) {
-    aliasInput.addEventListener('input', (e) => verificarAliasDisponible(e.target.value.trim()));
-  }
-});
 
 // ============================================
 // CATÁLOGOS
@@ -245,19 +308,25 @@ async function cargarCatalogos() {
     const selMun = document.getElementById('regMunicipio');
     const selDis = document.getElementById('regDistrito');
 
-    selMun.innerHTML = '<option value="">Selecciona</option>' + 
-      catalogos.municipios.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+    if (selMun) {
+      selMun.innerHTML = '<option value="">Selecciona</option>' + 
+        catalogos.municipios.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+    }
 
-    selDis.innerHTML = '<option value="">Selecciona</option>' + 
-      catalogos.distritos.map(d => `<option value="${d.id}">${d.nombre}</option>`).join('');
+    if (selDis) {
+      selDis.innerHTML = '<option value="">Selecciona</option>' + 
+        catalogos.distritos.map(d => `<option value="${d.id}">${d.nombre}</option>`).join('');
+    }
   } catch (err) {
     console.error('Error cargando catálogos:', err);
   }
 }
 
 function filtrarBarrios() {
-  const distrito = document.getElementById('regDistrito').value;
+  const distrito = document.getElementById('regDistrito')?.value;
   const selBarrio = document.getElementById('regBarrio');
+
+  if (!selBarrio) return;
 
   if (!distrito) {
     selBarrio.disabled = true;
@@ -275,30 +344,52 @@ function filtrarBarrios() {
 // UTILS
 // ============================================
 function mostrarError(div, msg) {
+  if (!div) return;
   div.textContent = msg;
   div.classList.add('show');
 }
 
 function toast(msg, tipo = 'success') {
   const t = document.getElementById('toast');
+  if (!t) return;
+  
   t.textContent = msg;
   t.className = 'toast show ' + tipo;
+  
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
 function togglePassword(inputId, btn) {
   const input = document.getElementById(inputId);
+  if (!input) return;
+  
   const isPassword = input.type === 'password';
   input.type = isPassword ? 'text' : 'password';
-  btn.innerHTML = isPassword 
-    ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22"/></svg>'
-    : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  
+  if (btn) {
+    btn.innerHTML = isPassword 
+      ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22"/></svg>'
+      : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  }
 }
 
-// ESC para cerrar
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') cerrarModalAuth();
+// ============================================
+// EVENT LISTENERS
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+  // Verificar sesión
+  verificarSesion();
+  
+  // Listener para alias
+  const aliasInput = document.getElementById('regAlias');
+  if (aliasInput) {
+    aliasInput.addEventListener('input', (e) => verificarAliasDisponible(e.target.value.trim()));
+  }
 });
 
-// Verificar sesión al cargar
-document.addEventListener('DOMContentLoaded', verificarSesion);
+// ESC para cerrar modal
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    cerrarModalAuth();
+  }
+});
