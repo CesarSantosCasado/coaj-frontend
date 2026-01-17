@@ -1,10 +1,11 @@
 /* ============================================
-   COAJ EVENTOS - Diseño Profesional v4
-   HOMOLOGADO 100% CON ACTIVIDADES
+   COAJ EVENTOS - CSS COMPLETO CONSOLIDADO
    Colores: #032845, #0A3D5C, #E8552A, #FF6B35
    ============================================ */
 
-/* === VARIABLES === */
+/* ============================================
+   1. VARIABLES CSS
+   ============================================ */
 :root {
   /* Colores corporativos */
   --coaj-primary: #032845;
@@ -17,7 +18,7 @@
   --warning: #d97706;
   --error: #dc2626;
   
-  /* Espaciado consistente */
+  /* Espaciado */
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 16px;
@@ -37,7 +38,9 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* === TEMA CLARO === */
+/* ============================================
+   2. TEMA CLARO
+   ============================================ */
 [data-theme="light"], :root {
   --bg-page: #f5f7fa;
   --bg-card: #ffffff;
@@ -59,7 +62,9 @@
   --shadow-xl: 0 16px 48px rgba(3, 40, 69, 0.16);
 }
 
-/* === TEMA OSCURO === */
+/* ============================================
+   3. TEMA OSCURO
+   ============================================ */
 [data-theme="dark"] {
   --bg-page: #0f172a;
   --bg-card: #1e293b;
@@ -81,7 +86,9 @@
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.5);
 }
 
-/* === RESET === */
+/* ============================================
+   4. RESET
+   ============================================ */
 *, *::before, *::after {
   margin: 0;
   padding: 0;
@@ -103,7 +110,7 @@ body {
 }
 
 /* ============================================
-   LOGIN MODAL
+   5. LOGIN MODAL
    ============================================ */
 .login-overlay {
   position: fixed;
@@ -276,7 +283,7 @@ body {
 }
 
 /* ============================================
-   APP LAYOUT
+   6. APP LAYOUT
    ============================================ */
 .app {
   min-height: 100vh;
@@ -284,7 +291,9 @@ body {
   flex-direction: column;
 }
 
-/* === HEADER === */
+/* ============================================
+   7. HEADER
+   ============================================ */
 .header {
   position: sticky;
   top: 0;
@@ -302,6 +311,7 @@ body {
   justify-content: space-between;
   max-width: 1200px;
   margin: 0 auto;
+  gap: var(--space-md);
 }
 
 .header-brand {
@@ -338,6 +348,40 @@ body {
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+/* Desktop Navigation */
+.desktop-nav {
+  display: none;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.desktop-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.desktop-nav-item:hover {
+  background: var(--bg-muted);
+  color: var(--text-primary);
+}
+
+.desktop-nav-item.active {
+  background: var(--coaj-accent);
+  color: white;
+}
+
+.desktop-nav-item .material-symbols-outlined {
+  font-size: 20px;
 }
 
 .header-actions {
@@ -389,7 +433,9 @@ body {
   box-shadow: 0 4px 12px rgba(232, 85, 42, 0.3);
 }
 
-/* === USER MENU === */
+/* ============================================
+   8. USER MENU
+   ============================================ */
 .user-menu {
   position: absolute;
   top: calc(100% + var(--space-sm));
@@ -465,7 +511,7 @@ body {
 }
 
 /* ============================================
-   MAIN CONTENT
+   9. MAIN CONTENT
    ============================================ */
 .main {
   flex: 1;
@@ -476,7 +522,9 @@ body {
   width: 100%;
 }
 
-/* === VIEW TOGGLE === */
+/* ============================================
+   10. VIEW TOGGLE
+   ============================================ */
 .view-toggle-section {
   margin-bottom: var(--space-md);
 }
@@ -521,7 +569,9 @@ body {
   font-size: 18px;
 }
 
-/* === SEARCH BAR === */
+/* ============================================
+   11. SEARCH BAR
+   ============================================ */
 .search-section {
   margin-bottom: var(--space-xl);
 }
@@ -562,7 +612,9 @@ body {
   color: var(--text-muted);
 }
 
-/* === LOADING === */
+/* ============================================
+   12. LOADING & EMPTY STATES
+   ============================================ */
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -594,7 +646,6 @@ body {
   font-size: 0.9rem;
 }
 
-/* === EMPTY STATE === */
 .empty-state {
   text-align: center;
   padding: var(--space-2xl);
@@ -623,7 +674,7 @@ body {
 }
 
 /* ============================================
-   SECTIONS
+   13. SECTIONS
    ============================================ */
 .section {
   margin-bottom: var(--space-xl);
@@ -678,7 +729,7 @@ body {
 }
 
 /* ============================================
-   CAROUSEL - Próximos Eventos
+   14. CAROUSEL
    ============================================ */
 .carousel-wrapper {
   margin: 0 calc(-1 * var(--space-lg));
@@ -699,7 +750,6 @@ body {
   padding: var(--space-xs) 0;
 }
 
-/* Event Card */
 .event-card {
   flex: 0 0 280px;
   scroll-snap-align: start;
@@ -788,7 +838,7 @@ body {
 }
 
 /* ============================================
-   CATEGORIES - Chips/Pills minimalistas
+   15. CATEGORIES CHIPS
    ============================================ */
 .categories-grid {
   display: flex;
@@ -841,7 +891,7 @@ body {
 }
 
 /* ============================================
-   EVENTS LIST
+   16. EVENTS LIST
    ============================================ */
 .events-list {
   display: flex;
@@ -946,7 +996,7 @@ body {
 }
 
 /* ============================================
-   CALENDARIO
+   17. CALENDARIO
    ============================================ */
 .calendario-container {
   background: var(--bg-card);
@@ -1084,7 +1134,7 @@ body {
 }
 
 /* ============================================
-   BOTTOM NAVIGATION
+   18. BOTTOM NAVIGATION (Mobile)
    ============================================ */
 .bottom-nav {
   position: fixed;
@@ -1122,32 +1172,16 @@ body {
   transition: color 0.2s ease;
 }
 
-.nav-item svg {
-  width: 22px;
-  height: 22px;
-  stroke-width: 1.5;
+.nav-item .material-symbols-outlined {
+  font-size: 22px;
 }
 
 .nav-item.active {
   color: var(--coaj-accent);
 }
 
-.nav-item.active svg {
-  stroke: var(--coaj-accent);
-}
-
-@media (min-width: 768px) {
-  .bottom-nav {
-    display: none;
-  }
-  
-  .main {
-    padding-bottom: var(--space-xl);
-  }
-}
-
 /* ============================================
-   MODAL - Drawer Style
+   19. MODAL DRAWER
    ============================================ */
 .modal-overlay {
   position: fixed;
@@ -1248,7 +1282,7 @@ body {
 }
 
 /* ============================================
-   EVENT DETAIL MODAL
+   20. DETAIL MODAL
    ============================================ */
 .detail-modal {
   position: fixed;
@@ -1277,9 +1311,8 @@ body {
 
 .detail-close {
   position: absolute;
-  top: var(--space-md);
-  left: var(--space-md);
   top: calc(var(--space-md) + var(--safe-top));
+  left: var(--space-md);
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -1431,13 +1464,8 @@ body {
   color: var(--coaj-accent);
 }
 
-.btn-primary .material-symbols-outlined,
-.btn-secondary .material-symbols-outlined {
-  font-size: 20px;
-}
-
 /* ============================================
-   TOAST
+   21. TOAST
    ============================================ */
 .toast {
   position: fixed;
@@ -1472,172 +1500,9 @@ body {
   background: var(--error);
 }
 
-.toast .material-symbols-outlined {
-  font-size: 20px;
-}
-
 /* ============================================
-   RESPONSIVE - DESKTOP
+   22. RESPONSIVE - MÓVIL (max-width: 767px)
    ============================================ */
-@media (min-width: 768px) {
-  .toast {
-    bottom: var(--space-xl);
-  }
-  
-  .detail-modal {
-    transform: none;
-    background: rgba(3, 40, 69, 0.6);
-    backdrop-filter: blur(4px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-xl);
-    overflow: auto;
-  }
-  
-  .detail-modal.active {
-    display: flex;
-  }
-  
-  .detail-modal .detail-image {
-    width: 100%;
-    max-width: 500px;
-    height: 280px;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    margin: 0;
-    flex-shrink: 0;
-    position: relative;
-  }
-  
-  .detail-modal .detail-content {
-    width: 100%;
-    max-width: 500px;
-    margin: 0;
-    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
-    margin-top: 0;
-    max-height: 60vh;
-    overflow-y: auto;
-  }
-  
-  .detail-modal .detail-close {
-    position: absolute;
-    top: var(--space-md);
-    left: var(--space-md);
-    z-index: 10;
-    width: 44px;
-    height: 44px;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
-    transition: all 0.2s ease;
-  }
-  
-  .detail-modal .detail-close:hover {
-    background: rgba(0, 0, 0, 0.8);
-    transform: scale(1.05);
-  }
-  
-  .login-overlay {
-    padding: var(--space-xl);
-  }
-  
-  .login-card {
-    max-width: 420px;
-    box-shadow: var(--shadow-xl), 0 0 60px rgba(0, 0, 0, 0.3);
-  }
-  
-  .login-header {
-    padding: var(--space-xl) var(--space-lg);
-    position: relative;
-    overflow: visible;
-  }
-  
-  .login-logo {
-    width: 80px;
-    height: 80px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    position: relative;
-    z-index: 1;
-  }
-  
-  .login-body {
-    padding: var(--space-lg) var(--space-xl);
-  }
-  
-  .modal-drawer {
-    max-width: 560px;
-    max-height: 80vh;
-    left: 50%;
-    right: auto;
-    bottom: auto;
-    top: 50%;
-    transform: translate(-50%, -50%) scale(0.95);
-    border-radius: var(--radius-xl);
-    opacity: 0;
-    visibility: hidden;
-  }
-  
-  .modal-drawer.active {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-    visibility: visible;
-  }
-  
-  .modal-body {
-    max-height: 60vh;
-    overflow-y: auto;
-  }
-  
-  .events-list {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1024px) {
-  .events-list {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* ============================================
-   RESPONSIVE - MOBILE
-   ============================================ */
-@media (max-width: 480px) {
-  .event-card {
-    flex: 0 0 240px;
-  }
-  
-  .event-card-image {
-    height: 140px;
-  }
-  
-  .detail-info-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .detail-actions {
-    flex-direction: column;
-  }
-  
-  .event-list-image {
-    width: 70px;
-    height: 70px;
-  }
-  
-  .calendario-header {
-    flex-direction: column;
-    gap: var(--space-md);
-  }
-  
-  .calendario-mes {
-    order: -1;
-  }
-}
-/* ============================================
-   CORRECCIONES MÓVIL - Agregar al final de eventos.css
-   ============================================ */
-
-/* === OVERFLOW GENERAL MÓVIL === */
 @media (max-width: 767px) {
   html, body {
     overflow-x: hidden;
@@ -1655,7 +1520,7 @@ body {
     overflow-x: hidden;
   }
   
-  /* === CALENDARIO COMPACTO === */
+  /* Calendario compacto */
   .calendario-container {
     padding: var(--space-md);
   }
@@ -1700,7 +1565,6 @@ body {
   }
   
   .calendario-dia {
-    aspect-ratio: 1;
     border-radius: var(--radius-sm);
     min-height: 36px;
   }
@@ -1713,8 +1577,7 @@ body {
     font-size: 0.55rem;
   }
   
-  /* === CENTROS - 2 FILAS CON SCROLL === */
-  #centrosSection .categories-grid,
+  /* Centros - 2 filas con scroll */
   #centrosGrid {
     display: grid;
     grid-template-rows: repeat(2, auto);
@@ -1732,18 +1595,16 @@ body {
     scrollbar-width: none;
   }
   
-  #centrosSection .categories-grid::-webkit-scrollbar,
   #centrosGrid::-webkit-scrollbar {
     display: none;
   }
   
   #centrosGrid .category-chip {
     scroll-snap-align: start;
-    white-space: nowrap;
     flex-shrink: 0;
   }
   
-  /* === CATEGORÍAS SCROLL HORIZONTAL === */
+  /* Categorías scroll horizontal */
   #categoriesGrid {
     display: flex;
     flex-wrap: nowrap;
@@ -1767,7 +1628,7 @@ body {
     flex-shrink: 0;
   }
   
-  /* === CAROUSEL FIX === */
+  /* Carousel */
   .carousel-wrapper {
     margin: 0 calc(-1 * var(--space-md));
     padding: 0 var(--space-md);
@@ -1777,7 +1638,7 @@ body {
     flex: 0 0 260px;
   }
   
-  /* === SEARCH BAR === */
+  /* Search */
   .search-bar {
     padding: var(--space-xs) var(--space-sm);
   }
@@ -1786,7 +1647,7 @@ body {
     font-size: 0.9rem;
   }
   
-  /* === VIEW TOGGLE === */
+  /* View toggle */
   .view-toggle {
     padding: 2px;
   }
@@ -1800,7 +1661,7 @@ body {
     font-size: 16px;
   }
   
-  /* === SECTION HEADERS === */
+  /* Sections */
   .section-header {
     flex-wrap: wrap;
     gap: var(--space-xs);
@@ -1814,7 +1675,7 @@ body {
     font-size: 1.1rem;
   }
   
-  /* === EVENTOS DÍA SECTION === */
+  /* Eventos día */
   #eventosDiaSection {
     margin-top: var(--space-md);
   }
@@ -1823,9 +1684,23 @@ body {
     display: flex;
     flex-direction: column;
   }
+  
+  /* Detail modal móvil */
+  .detail-info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .detail-actions {
+    flex-direction: column;
+  }
+  
+  .event-list-image {
+    width: 70px;
+    height: 70px;
+  }
 }
 
-/* === MÓVIL PEQUEÑO (< 400px) === */
+/* Móvil pequeño */
 @media (max-width: 400px) {
   .calendario-dia {
     min-height: 32px;
@@ -1864,12 +1739,10 @@ body {
     font-size: 0.9rem;
   }
 }
-/* ============================================
-   CORRECCIONES DESKTOP - Agregar al final de eventos.css
-   (NO afecta móvil)
-   ============================================ */
 
-/* === FIX OVERFLOW GENERAL DESKTOP === */
+/* ============================================
+   23. RESPONSIVE - DESKTOP (min-width: 768px)
+   ============================================ */
 @media (min-width: 768px) {
   html, body {
     overflow-x: hidden;
@@ -1880,14 +1753,25 @@ body {
     max-width: 100vw;
   }
   
+  /* Desktop nav visible */
+  .desktop-nav {
+    display: flex;
+  }
+  
+  /* Bottom nav oculto */
+  .bottom-nav {
+    display: none;
+  }
+  
   .main {
     max-width: 1200px;
     margin: 0 auto;
     padding: var(--space-xl);
+    padding-bottom: var(--space-xl);
     overflow-x: hidden;
   }
   
-  /* === CAROUSEL FIX DESKTOP === */
+  /* Carousel */
   .carousel-wrapper {
     margin: 0;
     padding: 0;
@@ -1899,7 +1783,7 @@ body {
     max-width: 100%;
   }
   
-  /* === CATEGORÍAS GRID DESKTOP === */
+  /* Categorías */
   .categories-grid,
   #categoriesGrid,
   #centrosGrid {
@@ -1912,7 +1796,7 @@ body {
     padding: 0;
   }
   
-  /* === CALENDARIO DESKTOP === */
+  /* Calendario */
   .calendario-container {
     max-width: 100%;
     overflow: hidden;
@@ -1926,19 +1810,14 @@ body {
   }
   
   .calendario-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: var(--space-xs);
     max-width: 100%;
   }
   
   .calendario-dia {
-    aspect-ratio: 1;
-    max-width: 100%;
     min-height: 50px;
   }
   
-  /* === EVENTS LIST DESKTOP === */
+  /* Events list grid */
   .events-list {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -1953,49 +1832,129 @@ body {
   
   .event-list-title {
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
   
-  /* === SEARCH SECTION === */
+  /* Search */
   .search-section {
     max-width: 600px;
   }
   
-  /* === VIEW TOGGLE === */
+  /* View toggle */
   .view-toggle-section {
     max-width: 400px;
   }
   
-  /* === SECTION HEADERS === */
+  /* Sections */
   .section {
     max-width: 100%;
     overflow: hidden;
   }
   
-  .section-header {
-    max-width: 100%;
+  /* Modal drawer desktop */
+  .modal-drawer {
+    max-width: 560px;
+    max-height: 80vh;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    border-radius: var(--radius-xl);
+    opacity: 0;
+    visibility: hidden;
   }
   
-  /* === MODAL DRAWER DESKTOP === */
+  .modal-drawer.active {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    visibility: visible;
+  }
+  
   .modal-drawer .events-list {
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
   }
   
-  /* === SEARCH RESULTS DESKTOP === */
-  #searchResults .events-list {
-    grid-template-columns: repeat(2, 1fr);
+  .modal-body {
+    max-height: 60vh;
+    overflow-y: auto;
   }
   
-  /* === EVENTOS DÍA DESKTOP === */
-  #eventosDiaSection .events-list {
-    grid-template-columns: repeat(2, 1fr);
+  /* Detail modal desktop */
+  .detail-modal {
+    transform: none;
+    background: rgba(3, 40, 69, 0.6);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-xl);
+    overflow: auto;
+  }
+  
+  .detail-modal.active {
+    display: flex;
+  }
+  
+  .detail-modal .detail-image {
+    width: 100%;
+    max-width: 500px;
+    height: 280px;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    margin: 0;
+    flex-shrink: 0;
+  }
+  
+  .detail-modal .detail-content {
+    width: 100%;
+    max-width: 500px;
+    margin: 0;
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    margin-top: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  
+  .detail-modal .detail-close {
+    position: absolute;
+    top: var(--space-md);
+    left: var(--space-md);
+    z-index: 10;
+    width: 44px;
+    height: 44px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+  }
+  
+  .detail-modal .detail-close:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.05);
+  }
+  
+  /* Login */
+  .login-card {
+    max-width: 420px;
+    box-shadow: var(--shadow-xl), 0 0 60px rgba(0, 0, 0, 0.3);
+  }
+  
+  .login-logo {
+    width: 80px;
+    height: 80px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  .login-body {
+    padding: var(--space-lg) var(--space-xl);
+  }
+  
+  /* Toast */
+  .toast {
+    bottom: var(--space-xl);
   }
 }
 
-/* === DESKTOP GRANDE (>1024px) === */
+/* Desktop grande */
 @media (min-width: 1024px) {
   .events-list {
     grid-template-columns: repeat(3, 1fr);
@@ -2015,7 +1974,7 @@ body {
   }
 }
 
-/* === PANTALLAS MUY ANCHAS === */
+/* Pantallas muy anchas */
 @media (min-width: 1400px) {
   .main {
     max-width: 1300px;
