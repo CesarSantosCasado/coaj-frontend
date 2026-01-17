@@ -1,798 +1,549 @@
-const API_URL = 'https://coajmadrid-8273afef0255.herokuapp.com/api/datos';
-const LOGIN_URL = 'https://coajmadrid-8273afef0255.herokuapp.com/api/login';
-const INSCRIPCION_URL = 'https://coajmadrid-8273afef0255.herokuapp.com/api/inscribir';
-
-var actividades = [];
-var actividadVigente = [];
-var vistaActual = 'tarjetas';
-var claseActual = 'todas';
-var centroActual = 'todos';
-var mesActual = new Date().getMonth();
-var añoActual = new Date().getFullYear();
-var usuarioActual = null;
-
-var iconos = {
-  'Cultura': '📚', 'Deporte': '⚽', 'Ocio': '🎮', 'Ocio y Tiempo Libre': '🎮',
-  'Formación': '🎓', 'Tecnología': '💻', 'Arte': '🎨', 'Música': '🎵',
-  'Naturaleza': '🌿', 'Social': '🤝'
-};
-
-var mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-var diasSemana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-
 // ============================================
-// FUNCIONES DE LOGIN
+// COAJ MADRID - APP.JS (Actividades)
+// Conectado al sistema de login unificado
 // ============================================
 
+const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
+
+let actividades = [];
+let actividadVigente = [];
+let categoriaActiva = 'Todas';
+let centroActivo = 'Todos';
+let vistaActual = 'tarjetas';
+let mesActual = new Date();
+
+// ============================================
+// VERIFICAR SESIÓN AL CARGAR
+// ============================================
 function verificarSesion() {
-  var sesion = localStorage.getItem('coajUsuario');
+  const sesion = localStorage.getItem('coajUsuario');
+  const loginModal = document.getElementById('loginModal');
+  
   if (sesion) {
-    usuarioActual = JSON.parse(sesion);
-    document.getElementById('nombreUsuario').textContent = usuarioActual.nombre;
-    document.getElementById('loginModal').classList.add('hidden');
-    cargarActividades();
+    // Ya está logueado, ocultar modal y mostrar datos
+    const usuario = JSON.parse(sesion);
+    if (loginModal) loginModal.classList.add('hidden');
+    mostrarUsuario(usuario);
+    cargarDatos();
   } else {
-    document.getElementById('loginModal').classList.remove('hidden');
+    // No hay sesión, mostrar modal de login
+    if (loginModal) loginModal.classList.remove('hidden');
+  }
+}
+
+function mostrarUsuario(usuario) {
+  const nombreEl = document.getElementById('nombreUsuario');
+  if (nombreEl) {
+    nombreEl.textContent = usuario.nombre || usuario.alias || 'Usuario';
+  }
+}
+
+// ============================================
+// LOGIN
+// ============================================
+async function iniciarSesion(e) {
+  e.preventDefault();
+  
+  const alias = document.getElementById('alias')?.value.trim();
+  const contrasena = document.getElementById('contrasena')?.value;
+  const errorDiv = document.getElementById('loginError');
+  const btn = document.querySelector('.btn-login');
+  
+  if (!alias || !contrasena) {
+    mostrarErrorLogin('Completa todos los campos');
+    return;
+  }
+  
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Verificando...';
+  }
+  
+  if (errorDiv) errorDiv.style.display = 'none';
+  
+  try {
+    const res = await fetch(`${API_BASE}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias, contrasena })
+    });
+    
+    const data = await res.json();
+    
+    if (data.success) {
+      // Guardar sesión (mismo key que home)
+      localStorage.setItem('coajUsuario', JSON.stringify(data.usuario));
+      
+      // Ocultar modal y cargar datos
+      document.getElementById('loginModal')?.classList.add('hidden');
+      mostrarUsuario(data.usuario);
+      cargarDatos();
+    } else {
+      mostrarErrorLogin(data.message || 'Credenciales incorrectas');
+    }
+  } catch (err) {
+    console.error('Login error:', err);
+    mostrarErrorLogin('Error de conexión. Intenta de nuevo.');
+  }
+  
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = '🔐 Iniciar Sesión';
   }
 }
 
 function entrarComoInvitado() {
-  usuarioActual = {
-    alias: 'invitado',
-    nombre: 'Invitado'
-  };
-  localStorage.setItem('coajUsuario', JSON.stringify(usuarioActual));
-  document.getElementById('nombreUsuario').textContent = 'Invitado';
-  document.getElementById('loginModal').classList.add('hidden');
-  cargarActividades();
+  // Guardar sesión de invitado
+  localStorage.setItem('coajUsuario', JSON.stringify({ 
+    alias: 'invitado', 
+    nombre: 'Invitado' 
+  }));
+  
+  document.getElementById('loginModal')?.classList.add('hidden');
+  mostrarUsuario({ nombre: 'Invitado' });
+  cargarDatos();
 }
 
-function iniciarSesion(event) {
-  event.preventDefault();
-  
-  var alias = document.getElementById('alias').value.trim();
-  var contrasena = document.getElementById('contrasena').value;
-  var errorDiv = document.getElementById('loginError');
-  var btnLogin = event.target.querySelector('button[type="submit"]');
-  var form = event.target;
-  
-  if (!alias || !contrasena) {
-    errorDiv.textContent = 'Por favor completa todos los campos';
+function mostrarErrorLogin(msg) {
+  const errorDiv = document.getElementById('loginError');
+  if (errorDiv) {
+    errorDiv.textContent = msg;
     errorDiv.style.display = 'block';
-    return;
   }
-  
-  errorDiv.style.display = 'none';
-  btnLogin.innerHTML = '⏳ Verificando credenciales...';
-  btnLogin.disabled = true;
-  form.querySelectorAll('input').forEach(function(input) {
-    input.disabled = true;
-  });
-  
-  fetch(LOGIN_URL, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    },
-    body: JSON.stringify({ alias: alias, contrasena: contrasena })
-  })
-    .then(function(response) {
-      if (!response.ok) {
-        throw new Error('Error en la respuesta del servidor');
-      }
-      return response.json();
-    })
-    .then(function(data) {
-      if (data.success) {
-        btnLogin.innerHTML = '✅ ¡Acceso concedido!';
-        
-        setTimeout(function() {
-          usuarioActual = data.usuario;
-          localStorage.setItem('coajUsuario', JSON.stringify(usuarioActual));
-          document.getElementById('nombreUsuario').textContent = usuarioActual.nombre;
-          document.getElementById('loginModal').classList.add('hidden');
-          document.getElementById('alias').value = '';
-          document.getElementById('contrasena').value = '';
-          
-          btnLogin.innerHTML = '🔐 Iniciar Sesión';
-          btnLogin.disabled = false;
-          form.querySelectorAll('input').forEach(function(input) {
-            input.disabled = false;
-          });
-          
-          cargarActividades();
-        }, 500);
-      } else {
-        btnLogin.innerHTML = '🔐 Iniciar Sesión';
-        btnLogin.disabled = false;
-        form.querySelectorAll('input').forEach(function(input) {
-          input.disabled = false;
-        });
-        
-        errorDiv.textContent = data.message || 'Usuario o contraseña incorrectos';
-        errorDiv.style.display = 'block';
-      }
-    })
-    .catch(function(error) {
-      console.error('Error:', error);
-      btnLogin.innerHTML = '🔐 Iniciar Sesión';
-      btnLogin.disabled = false;
-      form.querySelectorAll('input').forEach(function(input) {
-        input.disabled = false;
-      });
-      
-      errorDiv.textContent = 'Error de conexión. Intenta de nuevo.';
-      errorDiv.style.display = 'block';
-    });
 }
 
 function cerrarSesion() {
   localStorage.removeItem('coajUsuario');
-  usuarioActual = null;
-  document.getElementById('loginModal').classList.remove('hidden');
-  document.getElementById('alias').value = '';
-  document.getElementById('contrasena').value = '';
-  document.getElementById('loginError').style.display = 'none';
-  document.getElementById('vistaTarjetas').innerHTML = '';
-  document.getElementById('vistaCalendario').innerHTML = '';
+  // Redirigir al home o mostrar login
+  window.location.href = '../index.html';
 }
 
 // ============================================
-// FUNCIONES ORIGINALES
+// CARGAR DATOS
 // ============================================
-
-function cargarActividades() {
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('empty').style.display = 'none';
-  document.getElementById('vistaTarjetas').innerHTML = '';
-  document.getElementById('vistaCalendario').innerHTML = '';
+async function cargarDatos() {
+  const loading = document.getElementById('loading');
+  const empty = document.getElementById('empty');
   
-  fetch(API_URL)
-    .then(function(response) { return response.json(); })
-    .then(function(data) {
-      actividades = filtrarVigentes(data.actividades || []);
-      actividadVigente = data.actividadVigente || [];
-      generarFiltros(actividades);
-      generarFiltrosCentros(actividades);
-      render(actividades);
-      actualizarFecha();
-    })
-    .catch(function(error) {
-      console.error('Error:', error);
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('empty').style.display = 'block';
-    });
-}
-
-function parsearFecha(fechaStr) {
-  if (!fechaStr) return null;
+  if (loading) loading.style.display = 'block';
+  if (empty) empty.style.display = 'none';
+  
   try {
-    if (typeof fechaStr === 'string' && fechaStr.includes("/")) {
-      var fecha = fechaStr.split(" ")[0].split("/");
-      return new Date(parseInt(fecha[2]), parseInt(fecha[0]) - 1, parseInt(fecha[1]));
+    const res = await fetch(`${API_BASE}/datos`);
+    const data = await res.json();
+    
+    actividades = data.actividades || [];
+    actividadVigente = data.actividadVigente || [];
+    
+    if (loading) loading.style.display = 'none';
+    
+    if (actividades.length === 0) {
+      if (empty) empty.style.display = 'block';
+    } else {
+      generarFiltros();
+      renderizarVista();
     }
-    var fechaObj = new Date(fechaStr);
-    if (!isNaN(fechaObj.getTime())) return fechaObj;
-    return null;
-  } catch (e) { return null; }
+  } catch (err) {
+    console.error('Error cargando datos:', err);
+    if (loading) loading.style.display = 'none';
+    if (empty) {
+      empty.querySelector('.empty-title').textContent = 'Error de conexión';
+      empty.querySelector('.empty-text').textContent = 'No se pudieron cargar las actividades';
+      empty.style.display = 'block';
+    }
+  }
 }
 
-function filtrarVigentes(acts) {
-  var hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  return acts.filter(function(act) {
-    var fechaAl = parsearFecha(act.Al);
-    if (!fechaAl) return false;
-    fechaAl.setHours(0, 0, 0, 0);
-    return fechaAl >= hoy;
+// ============================================
+// FILTROS
+// ============================================
+function generarFiltros() {
+  const categorias = ['Todas', ...new Set(actividades.map(a => a.Categoría).filter(Boolean))];
+  const container = document.getElementById('filtros');
+  
+  if (!container) return;
+  
+  container.innerHTML = categorias.map(cat => `
+    <button class="view-btn ${cat === categoriaActiva ? 'active' : ''}" 
+            onclick="filtrarCategoria('${cat}')">
+      ${cat}
+    </button>
+  `).join('');
+}
+
+function filtrarCategoria(categoria) {
+  categoriaActiva = categoria;
+  
+  document.querySelectorAll('#filtros .view-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.trim() === categoria);
   });
+  
+  renderizarVista();
 }
 
-function formatearFecha(str) {
-  if (!str) return "";
-  try {
-    if (str.indexOf("/") > -1) {
-      var partes = str.split(" ");
-      var fecha = partes[0].split("/");
-      var fechaObj = new Date(parseInt(fecha[2]), parseInt(fecha[0]) - 1, parseInt(fecha[1]));
-      return fechaObj.toLocaleDateString("es-MX", { day: 'numeric', month: 'long', year: 'numeric' });
-    }
-    return str;
-  } catch (e) { return str; }
-}
-
-function formatearHora(str) {
-  if (!str) return "";
-  try {
-    var partes = str.split(":");
-    if (partes.length >= 2) return partes[0] + ":" + partes[1];
-    return str;
-  } catch (e) { return str; }
-}
-
-function extraerImg(campo) {
-  if (!campo) return null;
-  try {
-    if (typeof campo === 'string' && campo.indexOf('{') > -1) {
-      var obj = JSON.parse(campo);
-      var url = obj.Url || null;
-      if (url && url.indexOf('fileName=') > -1) {
-        var fileName = url.split('fileName=')[1];
-        if (!fileName || fileName.trim().length === 0 || fileName === '&' || fileName.startsWith('&')) return null;
-      }
-      return url;
-    }
-    if (typeof campo === 'object' && campo.Url) {
-      var url = campo.Url;
-      if (url && url.indexOf('fileName=') > -1) {
-        var fileName = url.split('fileName=')[1];
-        if (!fileName || fileName.trim().length === 0 || fileName === '&' || fileName.startsWith('&')) return null;
-      }
-      return url;
-    }
-    if (typeof campo === 'string' && campo.indexOf('http') === 0) {
-      if (campo.indexOf('fileName=') > -1) {
-        var fileName = campo.split('fileName=')[1];
-        if (!fileName || fileName.trim().length === 0 || fileName === '&' || fileName.startsWith('&')) return null;
-      }
-      return campo;
-    }
-  } catch (e) {}
-  return null;
-}
-
+// ============================================
+// VISTAS
+// ============================================
 function cambiarVista(vista) {
   vistaActual = vista;
-  var botones = document.querySelectorAll('.view-btn');
-  botones.forEach(function(btn) { btn.classList.remove('active'); });
-  if (vista === 'tarjetas') {
-    botones[0].classList.add('active');
-    document.getElementById('vistaTarjetas').style.display = 'block';
-    document.getElementById('vistaCalendario').style.display = 'none';
+  
+  document.querySelectorAll('.view-toggle .view-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.classList.add('active');
+  
+  document.getElementById('vistaTarjetas').style.display = vista === 'tarjetas' ? 'block' : 'none';
+  document.getElementById('vistaCalendario').style.display = vista === 'calendario' ? 'block' : 'none';
+  
+  renderizarVista();
+}
+
+function renderizarVista() {
+  const filtradas = categoriaActiva === 'Todas' 
+    ? actividades 
+    : actividades.filter(a => a.Categoría === categoriaActiva);
+  
+  if (vistaActual === 'tarjetas') {
+    renderizarTarjetas(filtradas);
   } else {
-    botones[1].classList.add('active');
-    document.getElementById('vistaTarjetas').style.display = 'none';
-    document.getElementById('vistaCalendario').style.display = 'block';
+    renderizarCalendario(filtradas);
   }
-  render(actividades);
 }
 
-function agrupar(acts) {
-  var grupos = {};
-  acts.forEach(function(act) {
-    var clase = act.Clase || 'Sin Clasificar';
-    if (!grupos[clase]) grupos[clase] = [];
-    grupos[clase].push(act);
-  });
-  return grupos;
-}
-
-function filtrarActividades(acts) {
-  var resultado = acts;
-  if (claseActual !== 'todas') {
-    resultado = resultado.filter(function(act) {
-      return (act.Clase || 'Sin Clasificar') === claseActual;
-    });
-  }
-  if (centroActual !== 'todos') {
-    resultado = resultado.filter(function(act) {
-      return act["Centro Juvenil"] === centroActual;
-    });
-  }
-  return resultado;
-}
-
-function generarFiltros(acts) {
-  var filtrosContainer = document.getElementById('filtros');
-  filtrosContainer.innerHTML = '';
+function renderizarTarjetas(lista) {
+  const container = document.getElementById('vistaTarjetas');
+  if (!container) return;
   
-  var btnTodas = document.createElement('button');
-  btnTodas.className = 'filtro-btn active';
-  btnTodas.innerHTML = '📌 Todas (' + acts.length + ')';
-  btnTodas.onclick = function() { filtrarClase('todas'); };
-  filtrosContainer.appendChild(btnTodas);
-  
-  var grupos = agrupar(acts);
-  Object.keys(grupos).sort().forEach(function(clase) {
-    var btn = document.createElement('button');
-    btn.className = 'filtro-btn';
-    btn.innerHTML = (iconos[clase] || '📌') + ' ' + clase + ' (' + grupos[clase].length + ')';
-    btn.onclick = function() { filtrarClase(clase); };
-    filtrosContainer.appendChild(btn);
-  });
-}
-
-function generarFiltrosCentros(acts) {
-  var centrosContainer = document.getElementById('filtrosCentros');
-  centrosContainer.innerHTML = '';
-  
-  var centrosSet = new Set();
-  acts.forEach(function(act) {
-    var centro = act["Centro Juvenil"];
-    if (centro && centro.trim()) centrosSet.add(centro.trim());
-  });
-  
-  var centros = Array.from(centrosSet).sort();
-  if (centros.length === 0) {
-    centrosContainer.style.display = 'none';
+  if (lista.length === 0) {
+    container.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">Sin resultados</div>
+        <div class="empty-text">No hay actividades en esta categoría</div>
+      </div>
+    `;
     return;
   }
   
-  centrosContainer.style.display = 'flex';
-  
-  var btnTodos = document.createElement('button');
-  btnTodos.className = 'filtro-centro-btn active';
-  btnTodos.innerHTML = '🏢 Todos los Centros (' + acts.length + ')';
-  btnTodos.onclick = function() { filtrarCentro('todos'); };
-  centrosContainer.appendChild(btnTodos);
-  
-  centros.forEach(function(centro) {
-    var count = acts.filter(function(act) { return act["Centro Juvenil"] === centro; }).length;
-    var btn = document.createElement('button');
-    btn.className = 'filtro-centro-btn';
-    btn.innerHTML = '📍 ' + centro + ' (' + count + ')';
-    btn.onclick = function() { filtrarCentro(centro); };
-    centrosContainer.appendChild(btn);
+  // Agrupar por categoría
+  const grupos = {};
+  lista.forEach(a => {
+    const cat = a.Categoría || 'Sin categoría';
+    if (!grupos[cat]) grupos[cat] = [];
+    grupos[cat].push(a);
   });
-}
-
-function crearCard(act) {
-  var nombre = act.Actividad || act["ID Actividad"] || "Sin nombre";
-  var dias = act.Días || act.Dias || "Por confirmar";
-  var horaInicio = formatearHora(act["Hora de inicio"]);
-  var horaFin = formatearHora(act["Hora de finalización"]);
-  var horario = horaInicio && horaFin ? horaInicio + " - " + horaFin : "Por confirmar";
-  var centro = act["Centro Juvenil"] || "Sin centro";
-  var estado = act.Estado || "";
-  var imgUrl = extraerImg(act["Imagen URL"]) || extraerImg(act.Cartel);
-  var img = imgUrl || "https://placehold.co/600x400/032845/ffffff?text=COAJ";
-
-  var badgeHtml = '';
-  if (estado === 'Desarrollo') badgeHtml = '<span class="badge badge-desarrollo">En curso</span>';
-  else if (estado === 'Finalizado') badgeHtml = '<span class="badge badge-finalizado">Finalizado</span>';
-  else if (estado === 'Pendiente') badgeHtml = '<span class="badge badge-programado">Próximo</span>';
-
-  var card = document.createElement('div');
-  card.className = 'evento-card';
   
-  var imgElement = document.createElement('img');
-  imgElement.className = 'evento-img';
-  imgElement.src = img;
-  imgElement.alt = nombre;
-  imgElement.onerror = function() { this.src = 'https://placehold.co/600x400/032845/ffffff?text=COAJ'; };
-
-  var content = document.createElement('div');
-  content.className = 'evento-content';
+  let html = '';
   
-  var nombreDiv = document.createElement('div');
-  nombreDiv.className = 'evento-nombre';
-  nombreDiv.textContent = nombre;
-
-  var infoDiv = document.createElement('div');
-  infoDiv.className = 'evento-info';
-  infoDiv.innerHTML = badgeHtml +
-    '<div class="info-item"><div class="info-icon">📅</div><div class="info-text">' + dias + '</div></div>' +
-    '<div class="info-item"><div class="info-icon">⏰</div><div class="info-text">' + horario + '</div></div>' +
-    '<div class="info-item"><div class="info-icon">🏢</div><div class="info-text">' + centro + '</div></div>';
-
-  var btn = document.createElement('button');
-  btn.className = 'btn-ver-mas';
-  btn.textContent = 'Ver más';
-  btn.onclick = function() { abrirModal(act); };
-
-  content.appendChild(nombreDiv);
-  content.appendChild(infoDiv);
-  content.appendChild(btn);
-  card.appendChild(imgElement);
-  card.appendChild(content);
-  return card;
-}
-
-function getActividadesDia(dia, mes, año) {
-  var fechaBuscada = (mes + 1).toString().padStart(2, '0') + '/' + dia.toString().padStart(2, '0') + '/' + año;
-  return actividadVigente.filter(function(act) {
-    return act.Fecha === fechaBuscada;
-  });
-}
-
-function generarCalendario(acts) {
-  var primerDia = new Date(añoActual, mesActual, 1);
-  var ultimoDia = new Date(añoActual, mesActual + 1, 0);
-  var diasEnMes = ultimoDia.getDate();
-  var primerDiaSemana = (primerDia.getDay() + 6) % 7;
-
-  var html = '<div class="calendario-container">';
-  html += '<div class="calendario-header">';
-  html += '<div class="calendario-nav">';
-  html += '<button class="btn-nav" onclick="cambiarMes(-1)">←</button>';
-  html += '<div class="mes-actual">' + mesesNombres[mesActual] + ' ' + añoActual + '</div>';
-  html += '<button class="btn-nav" onclick="cambiarMes(1)">→</button>';
-  html += '</div>';
-  html += '<button class="btn-hoy" onclick="irHoy()">Hoy</button>';
-  html += '</div>';
-  html += '<div class="calendario-grid">';
-
-  for (var i = 0; i < 7; i++) {
-    html += '<div class="dia-semana">' + diasSemana[i] + '</div>';
+  for (const [categoria, items] of Object.entries(grupos)) {
+    html += `
+      <div class="category-banner">
+        <div class="category-content">
+          <div class="category-info">
+            <div class="category-icon">${getIconoCategoria(categoria)}</div>
+            <div class="category-title">${categoria}</div>
+          </div>
+          <div class="category-count">${items.length} actividad${items.length !== 1 ? 'es' : ''}</div>
+        </div>
+      </div>
+      <div class="eventos-grid">
+        ${items.map(a => crearTarjeta(a)).join('')}
+      </div>
+    `;
   }
-
-  for (var i = 0; i < primerDiaSemana; i++) {
-    var diaAnterior = new Date(añoActual, mesActual, -(primerDiaSemana - i - 1));
-    html += '<div class="dia-celda otro-mes"><div class="dia-numero">' + diaAnterior.getDate() + '</div></div>';
-  }
-
-  var hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-
-  for (var dia = 1; dia <= diasEnMes; dia++) {
-    var actividadesDia = getActividadesDia(dia, mesActual, añoActual);
-    if (centroActual !== 'todos') {
-      actividadesDia = actividadesDia.filter(function(act) {
-        return act["Centro Juvenil"] === centroActual;
-      });
-    }
-    var clases = 'dia-celda';
-    if (hoy.getDate() === dia && hoy.getMonth() === mesActual && hoy.getFullYear() === añoActual) clases += ' hoy';
-    if (actividadesDia.length > 0) clases += ' con-actividades';
-    html += '<div class="' + clases + '" onclick="verActividadesDia(' + dia + ')">';
-    html += '<div class="dia-numero">' + dia + '</div>';
-    if (actividadesDia.length > 0) html += '<div class="dia-contador">' + actividadesDia.length + ' act.</div>';
-    html += '</div>';
-  }
-
-  var diasRestantes = (7 - ((primerDiaSemana + diasEnMes) % 7)) % 7;
-  for (var i = 1; i <= diasRestantes; i++) {
-    html += '<div class="dia-celda otro-mes"><div class="dia-numero">' + i + '</div></div>';
-  }
-
-  html += '</div></div>';
-  return html;
-}
-
-function verActividadesDia(dia) {
-  var actividadesDia = getActividadesDia(dia, mesActual, añoActual);
-  if (centroActual !== 'todos') {
-    actividadesDia = actividadesDia.filter(function(act) {
-      return act["Centro Juvenil"] === centroActual;
-    });
-  }
-  if (actividadesDia.length === 0) return;
-
-  var container = document.getElementById('vistaCalendario');
-  var actividadesDiaDiv = document.getElementById('actividadesDia');
-  if (actividadesDiaDiv) actividadesDiaDiv.remove();
-
-  var fecha = new Date(añoActual, mesActual, dia);
-  var fechaFormateada = fecha.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  var textoActividades = actividadesDia.length === 1 ? '1 actividad' : actividadesDia.length + ' actividades';
-
-  var html = '<div class="actividades-dia-container" id="actividadesDia">';
-  html += '<div class="actividades-dia-header">';
-  html += '<div class="actividades-dia-titulo">📅 ' + fechaFormateada + ' (' + textoActividades + ')</div>';
-  html += '<button class="btn-cerrar-dia" onclick="cerrarActividadesDia()">✕</button>';
-  html += '</div>';
-  html += '<div class="actividades-dia-body">';
-  html += '<div class="eventos-grid" id="gridActividadesDia"></div>';
-  html += '</div></div>';
-
-  container.insertAdjacentHTML('beforeend', html);
-  var grid = document.getElementById('gridActividadesDia');
-  actividadesDia.forEach(function(act) { grid.appendChild(crearCardVigente(act)); });
-  document.getElementById('actividadesDia').scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function cerrarActividadesDia() {
-  var actividadesDiaDiv = document.getElementById('actividadesDia');
-  if (actividadesDiaDiv) actividadesDiaDiv.remove();
-}
-
-function cambiarMes(direccion) {
-  mesActual += direccion;
-  if (mesActual < 0) { mesActual = 11; añoActual--; }
-  else if (mesActual > 11) { mesActual = 0; añoActual++; }
-  cerrarActividadesDia();
-  render(actividades);
-}
-
-function irHoy() {
-  var hoy = new Date();
-  mesActual = hoy.getMonth();
-  añoActual = hoy.getFullYear();
-  cerrarActividadesDia();
-  render(actividades);
-}
-
-function crearCardVigente(act) {
-  var nombre = act.Actividad || "Sin nombre";
-  var centro = act["Centro Juvenil"] || "Sin centro";
-  var horaInicio = act["Hora Inicio"] ? act["Hora Inicio"].substring(0, 5) : "";
-  var horaFin = act["Hora Fin"] ? act["Hora Fin"].substring(0, 5) : "";
-  var horario = horaInicio && horaFin ? horaInicio + " - " + horaFin : "Por confirmar";
-  var img = act["URL Actividad"] || "https://placehold.co/600x400/032845/ffffff?text=COAJ";
-  var estado = act.Estado || "";
-
-  var badgeHtml = '';
-  if (estado === 'Desarrollo') badgeHtml = '<span class="badge badge-desarrollo">En curso</span>';
-  else if (estado === 'Finalizado') badgeHtml = '<span class="badge badge-finalizado">Finalizado</span>';
-  else if (estado === 'Pendiente') badgeHtml = '<span class="badge badge-programado">Próximo</span>';
-
-  var card = document.createElement('div');
-  card.className = 'evento-card';
   
-  var imgElement = document.createElement('img');
-  imgElement.className = 'evento-img';
-  imgElement.src = img;
-  imgElement.alt = nombre;
-  imgElement.onerror = function() { this.src = 'https://placehold.co/600x400/032845/ffffff?text=COAJ'; };
+  container.innerHTML = html;
+}
 
-  var content = document.createElement('div');
-  content.className = 'evento-content';
+function crearTarjeta(a) {
+  const img = a.Imagen || 'https://via.placeholder.com/400x200?text=COAJ';
+  const estado = a.Estado || 'Programado';
+  const badgeClass = estado.toLowerCase().includes('desarrollo') ? 'desarrollo' 
+                   : estado.toLowerCase().includes('final') ? 'finalizado' 
+                   : 'programado';
   
-  var nombreDiv = document.createElement('div');
-  nombreDiv.className = 'evento-nombre';
-  nombreDiv.textContent = nombre;
-
-  var infoDiv = document.createElement('div');
-  infoDiv.className = 'evento-info';
-  infoDiv.innerHTML = badgeHtml +
-    '<div class="info-item"><div class="info-icon">⏰</div><div class="info-text">' + horario + '</div></div>' +
-    '<div class="info-item"><div class="info-icon">🏢</div><div class="info-text">' + centro + '</div></div>';
-
-  var btn = document.createElement('button');
-  btn.className = 'btn-ver-mas';
-  btn.textContent = 'Ver más';
-  btn.onclick = function() { abrirModalVigente(act); };
-
-  content.appendChild(nombreDiv);
-  content.appendChild(infoDiv);
-  content.appendChild(btn);
-  card.appendChild(imgElement);
-  card.appendChild(content);
-  return card;
+  return `
+    <div class="evento-card" onclick="abrirModal('${a.Id || a.Actividad}')">
+      <img class="evento-img" src="${img}" alt="${a.Actividad}" onerror="this.src='https://via.placeholder.com/400x200?text=COAJ'">
+      <div class="evento-content">
+        <h3 class="evento-nombre">${a.Actividad}</h3>
+        <div class="evento-info">
+          <div class="info-item">
+            <span class="info-icon">📍</span>
+            <span class="info-text">${a['Centro Juvenil'] || 'Por definir'}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-icon">📅</span>
+            <span class="info-text">${a.Día || 'Por definir'}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-icon">🕐</span>
+            <span class="info-text">${a.Horario || 'Por definir'}</span>
+          </div>
+        </div>
+        <span class="badge badge-${badgeClass}">${estado}</span>
+        <button class="btn-ver-mas">Ver detalles</button>
+      </div>
+    </div>
+  `;
 }
 
-function abrirModalVigente(act) {
-  var modal = document.getElementById('modal');
-  var nombre = act.Actividad || "Sin nombre";
-  var desc = act.Descripción || "Sin descripción disponible.";
-  var img = act["URL Actividad"] || "https://placehold.co/600x400/032845/ffffff?text=COAJ";
-
-  document.getElementById('modalImg').src = img;
-  document.getElementById('modalTitulo').textContent = nombre;
-  document.getElementById('modalDescripcion').textContent = desc;
-
-  var badges = document.getElementById('modalBadges');
-  badges.innerHTML = '<span class="modal-badge" style="background: #0a3d5c; color: white;">' + (act.Días || '') + '</span>';
-
-  var horaInicio = act["Hora Inicio"] ? act["Hora Inicio"].substring(0, 5) : "N/A";
-  var horaFin = act["Hora Fin"] ? act["Hora Fin"].substring(0, 5) : "N/A";
-
-  var info = document.getElementById('modalInfo');
-  info.innerHTML =
-    '<div class="modal-info-card"><small>📅 Fecha</small><strong>' + (act.Fecha || 'N/A') + '</strong></div>' +
-    '<div class="modal-info-card"><small>🕐 Horario</small><strong>' + horaInicio + ' - ' + horaFin + '</strong></div>' +
-    '<div class="modal-info-card"><small>🏢 Centro</small><strong>' + (act["Centro Juvenil"] || 'N/A') + '</strong></div>' +
-    '<div class="modal-info-card"><small>👥 Inscritos</small><strong>' + (act["No de Inscritos"] || '0') + '</strong></div>';
-
-  modal.classList.add('active');
-  document.body.classList.add('modal-open');
+function getIconoCategoria(cat) {
+  const iconos = {
+    'Deporte': '⚽',
+    'Arte': '🎨',
+    'Música': '🎵',
+    'Tecnología': '💻',
+    'Idiomas': '🌍',
+    'Danza': '💃',
+    'Teatro': '🎭',
+    'Cocina': '👨‍🍳',
+    'Fotografía': '📷',
+    'default': '🎯'
+  };
+  return iconos[cat] || iconos.default;
 }
 
-function render(acts) {
-  var loading = document.getElementById('loading');
-  var empty = document.getElementById('empty');
-  var actividadesFiltradas = filtrarActividades(acts);
+// ============================================
+// CALENDARIO
+// ============================================
+function renderizarCalendario(lista) {
+  const container = document.getElementById('vistaCalendario');
+  if (!container) return;
+  
+  const año = mesActual.getFullYear();
+  const mes = mesActual.getMonth();
+  const primerDia = new Date(año, mes, 1);
+  const ultimoDia = new Date(año, mes + 1, 0);
+  const diasEnMes = ultimoDia.getDate();
+  const primerDiaSemana = primerDia.getDay();
+  
+  const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  
+  let html = `
+    <div class="calendario-container">
+      <div class="calendario-header">
+        <div class="calendario-nav">
+          <button class="btn-nav" onclick="cambiarMes(-1)">◀</button>
+          <span class="mes-actual">${meses[mes]} ${año}</span>
+          <button class="btn-nav" onclick="cambiarMes(1)">▶</button>
+        </div>
+        <button class="btn-hoy" onclick="irAHoy()">Hoy</button>
+      </div>
+      <div class="calendario-grid">
+        <div class="dia-semana">Dom</div>
+        <div class="dia-semana">Lun</div>
+        <div class="dia-semana">Mar</div>
+        <div class="dia-semana">Mié</div>
+        <div class="dia-semana">Jue</div>
+        <div class="dia-semana">Vie</div>
+        <div class="dia-semana">Sáb</div>
+  `;
+  
+  // Días vacíos al inicio
+  for (let i = 0; i < primerDiaSemana; i++) {
+    html += '<div class="dia-celda otro-mes"></div>';
+  }
+  
+  const hoy = new Date();
+  
+  for (let dia = 1; dia <= diasEnMes; dia++) {
+    const fecha = new Date(año, mes, dia);
+    const esHoy = fecha.toDateString() === hoy.toDateString();
+    const actividadesDia = contarActividadesDia(lista, fecha);
+    
+    html += `
+      <div class="dia-celda ${esHoy ? 'hoy' : ''} ${actividadesDia > 0 ? 'con-actividades' : ''}"
+           onclick="verActividadesDia(${año}, ${mes}, ${dia})">
+        <span class="dia-numero">${dia}</span>
+        ${actividadesDia > 0 ? `<span class="dia-contador">${actividadesDia}</span>` : ''}
+      </div>
+    `;
+  }
+  
+  html += `
+      </div>
+      <div id="actividadesDiaContainer"></div>
+    </div>
+  `;
+  
+  container.innerHTML = html;
+}
 
-  if (!actividadesFiltradas || actividadesFiltradas.length === 0) {
-    loading.style.display = 'none';
-    empty.style.display = 'block';
-    document.getElementById('vistaTarjetas').innerHTML = '';
-    document.getElementById('vistaCalendario').innerHTML = '';
+function contarActividadesDia(lista, fecha) {
+  const diaSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][fecha.getDay()];
+  return lista.filter(a => a.Día && a.Día.includes(diaSemana)).length;
+}
+
+function cambiarMes(delta) {
+  mesActual.setMonth(mesActual.getMonth() + delta);
+  renderizarVista();
+}
+
+function irAHoy() {
+  mesActual = new Date();
+  renderizarVista();
+}
+
+function verActividadesDia(año, mes, dia) {
+  const fecha = new Date(año, mes, dia);
+  const diaSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][fecha.getDay()];
+  
+  const filtradas = categoriaActiva === 'Todas' ? actividades : actividades.filter(a => a.Categoría === categoriaActiva);
+  const actividadesDia = filtradas.filter(a => a.Día && a.Día.includes(diaSemana));
+  
+  const container = document.getElementById('actividadesDiaContainer');
+  if (!container) return;
+  
+  if (actividadesDia.length === 0) {
+    container.innerHTML = '';
     return;
   }
-
-  loading.style.display = 'none';
-  empty.style.display = 'none';
-
-  if (vistaActual === 'tarjetas') renderTarjetas(actividadesFiltradas);
-  else renderCalendario(acts);
+  
+  container.innerHTML = `
+    <div class="actividades-dia-container">
+      <div class="actividades-dia-header">
+        <span class="actividades-dia-titulo">${diaSemana} ${dia}</span>
+        <button class="btn-cerrar-dia" onclick="document.getElementById('actividadesDiaContainer').innerHTML=''">✕</button>
+      </div>
+      <div class="actividades-dia-body">
+        <div class="eventos-grid">
+          ${actividadesDia.map(a => crearTarjeta(a)).join('')}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
-function renderTarjetas(acts) {
-  var container = document.getElementById('vistaTarjetas');
-  container.innerHTML = '';
-  var grupos = agrupar(acts);
-  var clases = Object.keys(grupos).sort();
-
-  if (claseActual !== 'todas') {
-    var items = grupos[claseActual] || [];
-    if (items.length === 0) return;
-    var grid = document.createElement('div');
-    grid.className = 'eventos-grid';
-    for (var i = 0; i < items.length; i++) grid.appendChild(crearCard(items[i]));
-    container.appendChild(grid);
-  } else {
-    for (var c = 0; c < clases.length; c++) {
-      var clase = clases[c];
-      var items = grupos[clase];
-      var icono = iconos[clase] || '📌';
-      
-      var banner = document.createElement('div');
-      banner.className = 'category-banner';
-      banner.innerHTML =
-        '<div class="category-content">' +
-          '<div class="category-info">' +
-            '<div class="category-icon">' + icono + '</div>' +
-            '<div class="category-title">' + clase + '</div>' +
-          '</div>' +
-          '<div class="category-count">' + items.length + '</div>' +
-        '</div>';
-      container.appendChild(banner);
-      
-      var grid = document.createElement('div');
-      grid.className = 'eventos-grid';
-      for (var i = 0; i < items.length; i++) grid.appendChild(crearCard(items[i]));
-      container.appendChild(grid);
-    }
+// ============================================
+// MODAL DETALLE
+// ============================================
+function abrirModal(id) {
+  const actividad = actividades.find(a => (a.Id || a.Actividad) === id);
+  if (!actividad) return;
+  
+  const modal = document.getElementById('modal');
+  const modalImg = document.getElementById('modalImg');
+  const modalTitulo = document.getElementById('modalTitulo');
+  const modalBadges = document.getElementById('modalBadges');
+  const modalDescripcion = document.getElementById('modalDescripcion');
+  const modalInfo = document.getElementById('modalInfo');
+  
+  if (modalImg) modalImg.src = actividad.Imagen || 'https://via.placeholder.com/700x400?text=COAJ';
+  if (modalTitulo) modalTitulo.textContent = actividad.Actividad;
+  
+  if (modalBadges) {
+    const estado = actividad.Estado || 'Programado';
+    const badgeClass = estado.toLowerCase().includes('desarrollo') ? 'badge-desarrollo' 
+                     : estado.toLowerCase().includes('final') ? 'badge-finalizado' 
+                     : 'badge-programado';
+    modalBadges.innerHTML = `
+      <span class="modal-badge ${badgeClass}">${estado}</span>
+      ${actividad.Categoría ? `<span class="modal-badge" style="background:#0a3d5c;color:white;">${actividad.Categoría}</span>` : ''}
+    `;
   }
-}
-
-function renderCalendario(acts) {
-  var container = document.getElementById('vistaCalendario');
-  container.innerHTML = generarCalendario(acts);
-}
-
-function filtrarClase(clase) {
-  claseActual = clase;
-  var botones = document.querySelectorAll('.filtro-btn');
-  for (var i = 0; i < botones.length; i++) {
-    botones[i].classList.remove('active');
-    if (botones[i].textContent.includes(clase) || (clase === 'todas' && botones[i].textContent.includes('Todas'))) {
-      botones[i].classList.add('active');
-    }
+  
+  if (modalDescripcion) {
+    modalDescripcion.textContent = actividad.Descripción || 'Sin descripción disponible.';
   }
-  cerrarActividadesDia();
-  render(actividades);
-}
-
-function filtrarCentro(centro) {
-  centroActual = centro;
-  var botones = document.querySelectorAll('.filtro-centro-btn');
-  for (var i = 0; i < botones.length; i++) {
-    botones[i].classList.remove('active');
-    if (botones[i].textContent.includes(centro) || (centro === 'todos' && botones[i].textContent.includes('Todos'))) {
-      botones[i].classList.add('active');
-    }
+  
+  if (modalInfo) {
+    modalInfo.innerHTML = `
+      <div class="modal-info-card"><small>📍 Centro</small><strong>${actividad['Centro Juvenil'] || 'Por definir'}</strong></div>
+      <div class="modal-info-card"><small>📅 Día</small><strong>${actividad.Día || 'Por definir'}</strong></div>
+      <div class="modal-info-card"><small>🕐 Horario</small><strong>${actividad.Horario || 'Por definir'}</strong></div>
+      <div class="modal-info-card"><small>👥 Plazas</small><strong>${actividad.Plazas || 'Ilimitadas'}</strong></div>
+      <div class="modal-info-card"><small>🎯 Edad</small><strong>${actividad.Edad || 'Todas'}</strong></div>
+      <div class="modal-info-card"><small>💰 Precio</small><strong>${actividad.Precio || 'Gratis'}</strong></div>
+      ${puedeInscribirse() ? `<button class="btn-inscribirse" onclick="inscribirse('${actividad.Actividad}')">📝 Inscribirse</button>` : ''}
+    `;
   }
-  cerrarActividadesDia();
-  render(actividades);
-}
-
-function abrirModal(act) {
-  var modal = document.getElementById('modal');
-  var nombre = act.Actividad || act["ID Actividad"] || "Sin nombre";
-  var desc = act.Descripción || act.Descripcion || "Sin descripción disponible.";
-  var imgUrl = extraerImg(act["Imagen URL"]) || extraerImg(act.Cartel);
-  var img = imgUrl || "https://placehold.co/600x400/032845/ffffff?text=COAJ";
-
-  document.getElementById('modalImg').src = img;
-  document.getElementById('modalTitulo').textContent = nombre;
-  document.getElementById('modalDescripcion').textContent = desc;
-
-  var badges = document.getElementById('modalBadges');
-  badges.innerHTML = '';
-
-  var estado = act.Estado || '';
-  if (estado === 'Desarrollo') badges.innerHTML += '<span class="modal-badge badge-desarrollo">En curso</span>';
-  else if (estado === 'Finalizado') badges.innerHTML += '<span class="modal-badge badge-finalizado">Finalizado</span>';
-  else if (estado === 'Pendiente') badges.innerHTML += '<span class="modal-badge badge-programado">Próximo</span>';
-
-  var clase = act.Clase;
-  if (clase) badges.innerHTML += '<span class="modal-badge" style="background: #e8552a; color: white;">' + clase + '</span>';
-
-  var modalidad = act.Modalidad;
-  if (modalidad) badges.innerHTML += '<span class="modal-badge" style="background: #0a3d5c; color: white;">' + modalidad + '</span>';
-
-  var horaInicio = formatearHora(act["Hora de inicio"]);
-  var horaFin = formatearHora(act["Hora de finalización"]);
-
-  var info = document.getElementById('modalInfo');
-  info.innerHTML =
-    '<div class="modal-info-card"><small>📅 Del</small><strong>' + (formatearFecha(act.Del) || 'N/A') + '</strong></div>' +
-    '<div class="modal-info-card"><small>⏰ Al</small><strong>' + (formatearFecha(act.Al) || 'N/A') + '</strong></div>' +
-    '<div class="modal-info-card"><small>🕐 Horario</small><strong>' + (horaInicio && horaFin ? horaInicio + ' - ' + horaFin : 'N/A') + '</strong></div>' +
-    '<div class="modal-info-card"><small>📅 Días</small><strong>' + (act.Días || act.Dias || 'N/A') + '</strong></div>' +
-    '<div class="modal-info-card"><small>🏢 Centro</small><strong>' + (act["Centro Juvenil"] || 'N/A') + '</strong></div>' +
-    '<div class="modal-info-card"><small>📚 Programa</small><strong>' + (act.Programa || 'N/A') + '</strong></div>' +
-    '<div class="modal-info-card"><small>👥 Plazas</small><strong>' + (act.Plazas || 'N/A') + '</strong></div>' +
-    '<div class="modal-info-card"><small>🎯 Tipo</small><strong>' + (act["Tipo de Actividad"] || 'N/A') + '</strong></div>';
-
-  if (usuarioActual && usuarioActual.alias !== 'invitado') {
-    var btnInscribirse = document.createElement('button');
-    btnInscribirse.className = 'btn-inscribirse';
-    btnInscribirse.innerHTML = '📝 Inscribirme a esta actividad';
-    btnInscribirse.onclick = function() { 
-      cerrarModal(); 
-      inscribirseActividad(act); 
-    };
-    info.appendChild(btnInscribirse);
+  
+  if (modal) {
+    modal.classList.add('active');
+    document.body.classList.add('modal-open');
   }
-
-  modal.classList.add('active');
-  document.body.classList.add('modal-open');
 }
 
 function cerrarModal(e) {
-  if (!e || e.target.id === 'modal') {
-    document.getElementById('modal').classList.remove('active');
+  if (e && e.target !== e.currentTarget) return;
+  
+  const modal = document.getElementById('modal');
+  if (modal) {
+    modal.classList.remove('active');
     document.body.classList.remove('modal-open');
   }
 }
 
-function actualizarFecha() {
-  var f = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-  document.getElementById('fecha').textContent = f;
+function puedeInscribirse() {
+  const sesion = localStorage.getItem('coajUsuario');
+  if (!sesion) return false;
+  const usuario = JSON.parse(sesion);
+  return usuario.alias !== 'invitado';
 }
 
-function inscribirseActividad(actividad) {
-  if (!usuarioActual || usuarioActual.alias === 'invitado') {
+// ============================================
+// INSCRIPCIÓN
+// ============================================
+async function inscribirse(actividad) {
+  const sesion = localStorage.getItem('coajUsuario');
+  if (!sesion) {
     alert('Debes iniciar sesión para inscribirte');
     return;
   }
-
-  var nombreActividad = actividad.Actividad || actividad["ID Actividad"] || "esta actividad";
-  if (!confirm('¿Deseas inscribirte a "' + nombreActividad + '"?')) {
+  
+  const usuario = JSON.parse(sesion);
+  if (usuario.alias === 'invitado') {
+    alert('Los invitados no pueden inscribirse. Inicia sesión con tu cuenta.');
     return;
   }
-
-  var overlay = document.createElement('div');
-  overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(3, 40, 69, 0.9); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);';
   
-  var loader = document.createElement('div');
-  loader.style.cssText = 'background: white; padding: 2rem; border-radius: 20px; text-align: center; box-shadow: 0 24px 72px rgba(0,0,0,0.4);';
-  loader.innerHTML = '<div style="width: 50px; height: 50px; border: 4px solid #e2e8f0; border-top-color: #e8552a; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div><div style="font-size: 1.125rem; font-weight: 700; color: #032845;">Inscribiendo...</div>';
-  
-  overlay.appendChild(loader);
-  document.body.appendChild(overlay);
-
-  fetch(INSCRIPCION_URL, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    },
-    body: JSON.stringify({ 
-      actividad: actividad["ID Actividad"],
-      usuario: usuarioActual.alias
-    })
-  })
-    .then(function(response) { return response.json(); })
-    .then(function(data) {
-      document.body.removeChild(overlay);
-      
-      if (data.success) {
-        var successDiv = document.createElement('div');
-        successDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 24px 72px rgba(0,0,0,0.4); z-index: 10001; text-align: center; min-width: 300px;';
-        successDiv.innerHTML = '<div style="font-size: 3rem; margin-bottom: 1rem;">✅</div><div style="font-size: 1.25rem; font-weight: 900; color: #032845; margin-bottom: 0.5rem;">¡Inscripción exitosa!</div><div style="font-size: 0.9375rem; color: #64748b; margin-bottom: 1.5rem;">Te has inscrito a ' + nombreActividad + '</div><button onclick="this.parentElement.remove()" style="padding: 0.75rem 1.5rem; background: #e8552a; color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;">Entendido</button>';
-        document.body.appendChild(successDiv);
-        
-        setTimeout(function() { 
-          if (successDiv.parentElement) successDiv.remove(); 
-        }, 5000);
-      } else {
-        alert('Error: ' + (data.message || 'No se pudo completar la inscripción'));
-      }
-    })
-    .catch(function(error) {
-      document.body.removeChild(overlay);
-      console.error('Error:', error);
-      alert('Error de conexión. Intenta de nuevo.');
+  try {
+    const res = await fetch(`${API_BASE}/inscribir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        actividad, 
+        usuario: usuario.alias 
+      })
     });
+    
+    const data = await res.json();
+    
+    if (data.success) {
+      alert('✅ ¡Inscripción exitosa!');
+      cerrarModal();
+    } else {
+      alert(data.message || 'Error al inscribirse');
+    }
+  } catch (err) {
+    console.error('Error inscripción:', err);
+    alert('Error de conexión');
+  }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+// ============================================
+// FECHA HEADER
+// ============================================
+function actualizarFecha() {
+  const fechaEl = document.getElementById('fecha');
+  if (fechaEl) {
+    const hoy = new Date();
+    const opciones = { weekday: 'long', day: 'numeric', month: 'long' };
+    fechaEl.textContent = hoy.toLocaleDateString('es-ES', opciones);
+  }
+}
+
+// ============================================
+// INIT
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
   actualizarFecha();
   verificarSesion();
-  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') cerrarModal(); });
+});
+
+// ESC para cerrar modal
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') cerrarModal();
 });
