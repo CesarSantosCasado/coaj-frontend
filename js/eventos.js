@@ -1,124 +1,260 @@
 /**
  * ========================================
- * 🎯 COAJ MADRID - EVENTOS
+ * COAJ MADRID - EVENTOS v4
  * ========================================
- * Frontend con fetch al backend Heroku + Cache
- * Misma arquitectura que actividades.js
+ * Diseño y lógica igual a actividades.js
+ * Filtros: Categoría + Centro COAJ
  */
 
 // ============================================
-// 📌 Verificar config.js
+// Verificar config.js
 // ============================================
 if (typeof COAJ_CONFIG === 'undefined') {
-  console.error('❌ COAJ_CONFIG no está definido. Asegúrate de cargar config.js primero.');
+  console.error('❌ COAJ_CONFIG no definido');
 }
 
 // ============================================
-// 📌 Configuración desde config.js
+// Configuración
 // ============================================
 const API_BASE = COAJ_CONFIG.api.base;
 const CACHE_KEY = COAJ_CONFIG.cache.eventosKey;
 const CACHE_TTL = COAJ_CONFIG.cache.ttl;
-const ICONOS = COAJ_CONFIG.eventos.icons;
+const ICONOS = COAJ_CONFIG.eventos?.icons || {
+  'Formación': '📚',
+  'Cultura': '🎭',
+  'Deportes': '⚽',
+  'Ocio': '🎮',
+  'Voluntariado': '🤝',
+  'Empleo': '💼',
+  'Salud': '❤️',
+  'Medio Ambiente': '🌱',
+  'default': '📅'
+};
 
 // ============================================
-// 📌 Estado Global
+// Estado Global
 // ============================================
 let eventos = [];
+let eventosFiltrados = [];
 let vistaActual = 'tarjetas';
 let categoriaActual = 'todas';
 let centroActual = 'todos';
+let busquedaActiva = false;
 let mesActual = new Date().getMonth();
 let añoActual = new Date().getFullYear();
-let diaSeleccionado = null;
+let eventoSeleccionado = null;
 
-const mesesNombres = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-];
-
+const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const diasSemana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 // ============================================
-// 🌐 CARGAR EVENTOS (con Cache)
+// SESIÓN Y LOGIN
+// ============================================
+function verificarSesion() {
+  const sesion = localStorage.getItem('coaj_sesion');
+  if (sesion) {
+    const usuario = JSON.parse(sesion);
+    actualizarUIUsuario(usuario);
+    ocultarLoginModal();
+  } else {
+    mostrarLoginModal();
+  }
+}
+
+function actualizarUIUsuario(usuario) {
+  const nombre = usuario.nombre || usuario.alias || 'Usuario';
+  const inicial = nombre.charAt(0).toUpperCase();
+  
+  document.getElementById('headerGreeting').textContent = `Hola, ${nombre}`;
+  document.getElementById('avatarInitial').textContent = inicial;
+  document.getElementById('menuAvatarInitial').textContent = inicial;
+  document.getElementById('menuUserName').textContent = nombre;
+  
+  document.getElementById('bottomNavGuest').style.display = 'none';
+  document.getElementById('bottomNavUser').style.display = 'flex';
+}
+
+function entrarComoInvitado() {
+  const invitado = { tipo: 'invitado', nombre: 'Invitado' };
+  localStorage.setItem('coaj_sesion', JSON.stringify(invitado));
+  actualizarUIUsuario(invitado);
+  ocultarLoginModal();
+  cargarEventos();
+}
+
+async function iniciarSesion(e) {
+  e.preventDefault();
+  const alias = document.getElementById('alias').value.trim();
+  const contrasena = document.getElementById('contrasena').value;
+  const errorEl = document.getElementById('loginError');
+  const btnLogin = document.querySelector('.btn-login');
+  
+  if (!alias || !contrasena) {
+    errorEl.textContent = 'Completa todos los campos';
+    errorEl.style.display = 'block';
+    return;
+  }
+  
+  btnLogin.disabled = true;
+  btnLogin.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Verificando...';
+  
+  try {
+    const response = await fetch(`${API_BASE}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias, contrasena })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success && data.usuario) {
+      localStorage.setItem('coaj_sesion', JSON.stringify(data.usuario));
+      actualizarUIUsuario(data.usuario);
+      ocultarLoginModal();
+      cargarEventos();
+      mostrarToast(`Bienvenido, ${data.usuario.nombre || alias}`, 'success');
+    } else {
+      errorEl.textContent = data.error || 'Credenciales incorrectas';
+      errorEl.style.display = 'block';
+    }
+  } catch (error) {
+    console.error('Error login:', error);
+    errorEl.textContent = 'Error de conexión';
+    errorEl.style.display = 'block';
+  } finally {
+    btnLogin.disabled = false;
+    btnLogin.innerHTML = '<span class="material-symbols-outlined">login</span> Iniciar Sesión';
+  }
+}
+
+function cerrarSesion() {
+  localStorage.removeItem('coaj_sesion');
+  document.getElementById('bottomNavGuest').style.display = 'flex';
+  document.getElementById('bottomNavUser').style.display = 'none';
+  document.getElementById('headerGreeting').textContent = 'Bienvenido';
+  document.getElementById('avatarInitial').textContent = 'U';
+  cerrarUserMenu();
+  mostrarLoginModal();
+}
+
+function mostrarLoginModal() {
+  document.getElementById('loginModal').classList.remove('hidden');
+}
+
+function ocultarLoginModal() {
+  document.getElementById('loginModal').classList.add('hidden');
+}
+
+// ============================================
+// USER MENU
+// ============================================
+function toggleUserMenu() {
+  document.getElementById('userMenu').classList.toggle('active');
+}
+
+function cerrarUserMenu() {
+  document.getElementById('userMenu').classList.remove('active');
+}
+
+// ============================================
+// TEMA
+// ============================================
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'light';
+  const next = current === 'light' ? 'dark' : 'light';
+  
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('coaj_theme', next);
+  
+  const icon = next === 'dark' ? 'light_mode' : 'dark_mode';
+  const text = next === 'dark' ? 'Modo Claro' : 'Modo Oscuro';
+  
+  document.getElementById('themeIcon').textContent = icon;
+  document.getElementById('menuThemeIcon').textContent = icon;
+  document.getElementById('menuThemeText').textContent = text;
+}
+
+function cargarTema() {
+  const tema = localStorage.getItem('coaj_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', tema);
+  
+  const icon = tema === 'dark' ? 'light_mode' : 'dark_mode';
+  const text = tema === 'dark' ? 'Modo Claro' : 'Modo Oscuro';
+  
+  document.getElementById('themeIcon').textContent = icon;
+  document.getElementById('menuThemeIcon').textContent = icon;
+  document.getElementById('menuThemeText').textContent = text;
+}
+
+// ============================================
+// CARGAR EVENTOS
 // ============================================
 async function cargarEventos(forceRefresh = false) {
-  console.log('📅 cargarEventos() - forceRefresh:', forceRefresh);
+  console.log('📅 cargarEventos()', forceRefresh ? '(forzado)' : '');
   
-  // 1. Verificar cache (si no es refresh forzado)
   if (!forceRefresh) {
     const cached = CoajCache.get(CACHE_KEY, CACHE_TTL);
     if (cached) {
-      console.log('📦 Usando eventos desde cache');
+      console.log('📦 Usando cache');
       eventos = cached;
-      generarFiltros(eventos);
-      generarFiltrosCentros(eventos);
-      render(eventos);
-      actualizarFecha();
+      procesarEventos();
       return;
     }
   }
   
-  // 2. Mostrar loading
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('vistaTarjetas').innerHTML = '';
-  document.getElementById('vistaCalendario').innerHTML = '';
+  mostrarLoading(true);
   
   try {
-    console.log('🌐 Cargando eventos desde API...');
     const response = await fetch(`${API_BASE}/eventos`);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     
     const data = await response.json();
     
     if (data.eventos && Array.isArray(data.eventos)) {
-      // Filtrar finalizados hace más de 5 días
       eventos = filtrarEventosFinalizados(data.eventos);
-      // Ordenar por fecha
       eventos = ordenarEventosPorFecha(eventos);
+      console.log(`✅ ${eventos.length} eventos cargados`);
       
-      console.log(`✅ Eventos cargados: ${eventos.length}`);
-      
-      // 3. Guardar en cache
       CoajCache.set(CACHE_KEY, eventos);
-      
-      // 4. Renderizar
-      generarFiltros(eventos);
-      generarFiltrosCentros(eventos);
-      render(eventos);
-      actualizarFecha();
+      procesarEventos();
     } else {
-      console.warn('⚠️ Respuesta sin eventos');
       eventos = [];
-      render(eventos);
+      procesarEventos();
     }
-    
   } catch (error) {
-    console.error('❌ Error cargando eventos:', error);
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('empty').style.display = 'block';
+    console.error('❌ Error:', error);
+    mostrarLoading(false);
+    mostrarEmpty(true);
     mostrarToast('Error al cargar eventos', 'error');
   }
 }
 
-// ============================================
-// 🔄 Refrescar eventos (forzar)
-// ============================================
-function refrescarEventos() {
-  console.log('🔄 Refrescando eventos...');
+function refrescarDatos() {
   CoajCache.remove(CACHE_KEY);
   categoriaActual = 'todas';
   centroActual = 'todos';
+  actualizarFiltrosUI();
   cargarEventos(true);
-  mostrarToast('Actualizando eventos...', 'success');
+  mostrarToast('Actualizando...', 'success');
 }
 
 // ============================================
-// 🗑️ Filtrar eventos finalizados (>5 días)
+// PROCESAR EVENTOS
 // ============================================
+function procesarEventos() {
+  mostrarLoading(false);
+  
+  if (eventos.length === 0) {
+    mostrarEmpty(true);
+    return;
+  }
+  
+  mostrarEmpty(false);
+  generarFiltros();
+  aplicarFiltros();
+}
+
 function filtrarEventosFinalizados(evts) {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
@@ -126,103 +262,638 @@ function filtrarEventosFinalizados(evts) {
   return evts.filter(ev => {
     const fechaFin = parsearFecha(ev["Fecha finalización"]) || parsearFecha(ev["Fecha inicio"]);
     if (!fechaFin) return true;
-    
     const diffDias = Math.floor((hoy - fechaFin) / (1000 * 60 * 60 * 24));
     return diffDias <= 5;
   });
 }
 
-// ============================================
-// 📅 Ordenar por fecha
-// ============================================
 function ordenarEventosPorFecha(evts) {
   return evts.sort((a, b) => {
-    const fechaA = parsearFecha(a["Fecha inicio"]);
-    const fechaB = parsearFecha(b["Fecha inicio"]);
-    return fechaB - fechaA;
+    const fechaA = parsearFecha(a["Fecha inicio"]) || new Date(0);
+    const fechaB = parsearFecha(b["Fecha inicio"]) || new Date(0);
+    return fechaA - fechaB;
   });
 }
 
 // ============================================
-// 🔄 Parsear fecha AppSheet (MM/DD/YYYY)
+// FILTROS
+// ============================================
+function generarFiltros() {
+  generarFiltrosCategorias();
+  generarFiltrosCentros();
+}
+
+function generarFiltrosCategorias() {
+  const container = document.getElementById('filtrosCategoria');
+  container.innerHTML = '';
+  
+  const categorias = {};
+  eventos.forEach(ev => {
+    const cat = ev.Categoría || ev.Categoria || 'Sin Categoría';
+    categorias[cat] = (categorias[cat] || 0) + 1;
+  });
+  
+  // Todas
+  const btnTodas = crearChipFiltro('todas', '📌', 'Todas', eventos.length, categoriaActual === 'todas');
+  btnTodas.onclick = () => seleccionarCategoria('todas');
+  container.appendChild(btnTodas);
+  
+  // Por categoría
+  Object.keys(categorias).sort().forEach(cat => {
+    const icono = ICONOS[cat] || ICONOS.default;
+    const chip = crearChipFiltro(cat, icono, cat, categorias[cat], categoriaActual === cat);
+    chip.onclick = () => seleccionarCategoria(cat);
+    container.appendChild(chip);
+  });
+}
+
+function generarFiltrosCentros() {
+  const container = document.getElementById('filtrosCentro');
+  container.innerHTML = '';
+  
+  const centros = {};
+  eventos.forEach(ev => {
+    const centro = ev["Centro Juvenil"];
+    if (centro && centro.trim()) {
+      centros[centro.trim()] = (centros[centro.trim()] || 0) + 1;
+    }
+  });
+  
+  if (Object.keys(centros).length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+  
+  container.style.display = 'flex';
+  
+  // Todos
+  const btnTodos = crearChipFiltro('todos', '🏢', 'Todos', eventos.length, centroActual === 'todos', true);
+  btnTodos.onclick = () => seleccionarCentro('todos');
+  container.appendChild(btnTodos);
+  
+  // Por centro
+  Object.keys(centros).sort().forEach(centro => {
+    const chip = crearChipFiltro(centro, '📍', centro, centros[centro], centroActual === centro, true);
+    chip.onclick = () => seleccionarCentro(centro);
+    container.appendChild(chip);
+  });
+}
+
+function crearChipFiltro(id, icono, nombre, count, activo, esCentro = false) {
+  const chip = document.createElement('button');
+  chip.className = 'filter-chip';
+  if (activo) chip.classList.add(esCentro ? 'active-secondary' : 'active');
+  chip.setAttribute('data-id', id);
+  chip.innerHTML = `
+    <span class="icon">${icono}</span>
+    <span>${nombre}</span>
+    <span class="count">${count}</span>
+  `;
+  return chip;
+}
+
+function seleccionarCategoria(cat) {
+  categoriaActual = cat;
+  actualizarFiltrosUI();
+  aplicarFiltros();
+}
+
+function seleccionarCentro(centro) {
+  centroActual = centro;
+  actualizarFiltrosUI();
+  aplicarFiltros();
+}
+
+function actualizarFiltrosUI() {
+  // Categorías
+  document.querySelectorAll('#filtrosCategoria .filter-chip').forEach(chip => {
+    chip.classList.remove('active');
+    if (chip.getAttribute('data-id') === categoriaActual) {
+      chip.classList.add('active');
+    }
+  });
+  
+  // Centros
+  document.querySelectorAll('#filtrosCentro .filter-chip').forEach(chip => {
+    chip.classList.remove('active-secondary');
+    if (chip.getAttribute('data-id') === centroActual) {
+      chip.classList.add('active-secondary');
+    }
+  });
+}
+
+function aplicarFiltros() {
+  eventosFiltrados = eventos.filter(ev => {
+    const cat = ev.Categoría || ev.Categoria || 'Sin Categoría';
+    const centro = ev["Centro Juvenil"] || '';
+    
+    const pasaCategoria = categoriaActual === 'todas' || cat === categoriaActual;
+    const pasaCentro = centroActual === 'todos' || centro === centroActual;
+    
+    return pasaCategoria && pasaCentro;
+  });
+  
+  renderizar();
+}
+
+// ============================================
+// BÚSQUEDA
+// ============================================
+function buscarEventos() {
+  const query = document.getElementById('searchInput').value.toLowerCase().trim();
+  
+  if (!query) {
+    cerrarBusqueda();
+    return;
+  }
+  
+  busquedaActiva = true;
+  
+  const resultados = eventos.filter(ev => {
+    const nombre = (ev.Evento || ev["ID Eventos"] || '').toLowerCase();
+    const categoria = (ev.Categoría || ev.Categoria || '').toLowerCase();
+    const centro = (ev["Centro Juvenil"] || '').toLowerCase();
+    const descripcion = (ev.Descripción || ev.Descripcion || '').toLowerCase();
+    
+    return nombre.includes(query) || categoria.includes(query) || centro.includes(query) || descripcion.includes(query);
+  });
+  
+  mostrarResultadosBusqueda(resultados);
+}
+
+function mostrarResultadosBusqueda(resultados) {
+  document.getElementById('vistaTarjetas').style.display = 'none';
+  document.getElementById('vistaCalendario').style.display = 'none';
+  document.getElementById('searchResults').classList.remove('hidden');
+  
+  const lista = document.getElementById('searchResultsList');
+  lista.innerHTML = '';
+  
+  if (resultados.length === 0) {
+    lista.innerHTML = '<div class="empty-state active"><span class="material-symbols-outlined">search_off</span><h3>Sin resultados</h3><p>Intenta con otros términos</p></div>';
+    return;
+  }
+  
+  resultados.forEach(ev => {
+    lista.appendChild(crearEventoListItem(ev));
+  });
+}
+
+function cerrarBusqueda() {
+  busquedaActiva = false;
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').classList.add('hidden');
+  
+  if (vistaActual === 'tarjetas') {
+    document.getElementById('vistaTarjetas').style.display = 'block';
+  } else {
+    document.getElementById('vistaCalendario').style.display = 'block';
+  }
+}
+
+// ============================================
+// CAMBIAR VISTA
+// ============================================
+function cambiarVista(vista) {
+  vistaActual = vista;
+  
+  document.getElementById('btnVistaTarjetas').classList.toggle('active', vista === 'tarjetas');
+  document.getElementById('btnVistaCalendario').classList.toggle('active', vista === 'calendario');
+  
+  if (vista === 'tarjetas') {
+    document.getElementById('vistaTarjetas').style.display = 'block';
+    document.getElementById('vistaCalendario').style.display = 'none';
+  } else {
+    document.getElementById('vistaTarjetas').style.display = 'none';
+    document.getElementById('vistaCalendario').style.display = 'block';
+  }
+  
+  renderizar();
+}
+
+// ============================================
+// RENDERIZAR
+// ============================================
+function renderizar() {
+  if (busquedaActiva) return;
+  
+  if (eventosFiltrados.length === 0) {
+    mostrarEmpty(true);
+    document.getElementById('upcomingSection').classList.add('hidden');
+    document.getElementById('allEventsSection').classList.add('hidden');
+    return;
+  }
+  
+  mostrarEmpty(false);
+  
+  if (vistaActual === 'tarjetas') {
+    renderizarTarjetas();
+  } else {
+    renderizarCalendario();
+  }
+}
+
+function renderizarTarjetas() {
+  // Próximos eventos (carrusel)
+  const proximos = obtenerProximosEventos(eventosFiltrados, 10);
+  const carouselContainer = document.getElementById('upcomingCarousel');
+  carouselContainer.innerHTML = '';
+  
+  if (proximos.length > 0) {
+    document.getElementById('upcomingSection').classList.remove('hidden');
+    proximos.forEach(ev => {
+      carouselContainer.appendChild(crearEventoCard(ev));
+    });
+  } else {
+    document.getElementById('upcomingSection').classList.add('hidden');
+  }
+  
+  // Todos los eventos (lista)
+  const listaContainer = document.getElementById('allEventsList');
+  listaContainer.innerHTML = '';
+  
+  document.getElementById('allEventsSection').classList.remove('hidden');
+  document.getElementById('totalCount').textContent = `${eventosFiltrados.length} eventos`;
+  
+  eventosFiltrados.forEach(ev => {
+    listaContainer.appendChild(crearEventoListItem(ev));
+  });
+}
+
+function renderizarCalendario() {
+  const container = document.getElementById('calendarContainer');
+  container.innerHTML = generarCalendarioHTML();
+}
+
+// ============================================
+// CREAR ELEMENTOS
+// ============================================
+function crearEventoCard(ev) {
+  const card = document.createElement('div');
+  card.className = 'event-card';
+  card.onclick = () => abrirModalDetalle(ev);
+  
+  const nombre = ev.Evento || ev["ID Eventos"] || 'Sin nombre';
+  const fecha = formatearFechaCorta(ev["Fecha inicio"]);
+  const centro = ev["Centro Juvenil"] || 'Sin centro';
+  const estado = calcularEstado(ev);
+  const img = extraerImg(ev["Imagen URL"]) || extraerImg(ev.Cartel) || 'https://placehold.co/600x400/032845/ffffff?text=COAJ';
+  
+  let badgeClass = '';
+  let badgeText = '';
+  if (estado === 'Desarrollo') { badgeClass = 'badge-desarrollo'; badgeText = 'En curso'; }
+  else if (estado === 'Programado') { badgeClass = 'badge-programado'; badgeText = 'Próximo'; }
+  else if (estado === 'Finalizado') { badgeClass = 'badge-finalizado'; badgeText = 'Finalizado'; }
+  
+  card.innerHTML = `
+    <div class="event-card-image" style="background-image: url('${img}')">
+      ${badgeText ? `<span class="event-card-badge ${badgeClass}">${badgeText}</span>` : ''}
+    </div>
+    <div class="event-card-body">
+      <h3 class="event-card-title">${nombre}</h3>
+      <div class="event-card-meta">
+        <div class="event-card-meta-item">
+          <span class="material-symbols-outlined">event</span>
+          <span>${fecha}</span>
+        </div>
+        <div class="event-card-meta-item">
+          <span class="material-symbols-outlined">location_on</span>
+          <span>${centro}</span>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  return card;
+}
+
+function crearEventoListItem(ev) {
+  const item = document.createElement('div');
+  item.className = 'event-list-item';
+  item.onclick = () => abrirModalDetalle(ev);
+  
+  const nombre = ev.Evento || ev["ID Eventos"] || 'Sin nombre';
+  const fecha = formatearFechaCorta(ev["Fecha inicio"]);
+  const centro = ev["Centro Juvenil"] || 'Sin centro';
+  const categoria = ev.Categoría || ev.Categoria || '';
+  const estado = calcularEstado(ev);
+  const img = extraerImg(ev["Imagen URL"]) || extraerImg(ev.Cartel) || 'https://placehold.co/600x400/032845/ffffff?text=COAJ';
+  
+  let statusClass = '';
+  let statusText = '';
+  if (estado === 'Desarrollo') { statusClass = 'status-desarrollo'; statusText = 'En curso'; }
+  else if (estado === 'Programado') { statusClass = 'status-programado'; statusText = 'Próximo'; }
+  else if (estado === 'Finalizado') { statusClass = 'status-finalizado'; statusText = 'Finalizado'; }
+  
+  item.innerHTML = `
+    <div class="event-list-image" style="background-image: url('${img}')"></div>
+    <div class="event-list-content">
+      <h3 class="event-list-title">${nombre}</h3>
+      <div class="event-list-badges">
+        ${statusText ? `<span class="status-badge ${statusClass}">${statusText}</span>` : ''}
+        ${categoria ? `<span class="status-badge" style="background: rgba(232, 85, 42, 0.1); color: #E8552A;">${categoria}</span>` : ''}
+      </div>
+      <div class="event-list-info">
+        <span class="event-list-info-item">
+          <span class="material-symbols-outlined">event</span>
+          ${fecha}
+        </span>
+        <span class="event-list-info-item">
+          <span class="material-symbols-outlined">location_on</span>
+          ${centro}
+        </span>
+      </div>
+    </div>
+    <span class="event-list-arrow material-symbols-outlined">chevron_right</span>
+  `;
+  
+  return item;
+}
+
+// ============================================
+// CALENDARIO
+// ============================================
+function generarCalendarioHTML() {
+  const primerDia = new Date(añoActual, mesActual, 1);
+  const ultimoDia = new Date(añoActual, mesActual + 1, 0);
+  const diasEnMes = ultimoDia.getDate();
+  const primerDiaSemana = (primerDia.getDay() + 6) % 7;
+  const hoy = new Date();
+  
+  let html = `
+    <div class="calendar-header">
+      <div class="calendar-nav">
+        <button class="calendar-nav-btn" onclick="cambiarMes(-1)">
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+        <span class="calendar-month">${mesesNombres[mesActual]} ${añoActual}</span>
+        <button class="calendar-nav-btn" onclick="cambiarMes(1)">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+      </div>
+      <button class="btn-today" onclick="irHoy()">Hoy</button>
+    </div>
+    <div class="calendar-grid">
+  `;
+  
+  diasSemana.forEach(d => {
+    html += `<div class="calendar-weekday">${d}</div>`;
+  });
+  
+  // Días anteriores
+  for (let i = 0; i < primerDiaSemana; i++) {
+    const diaAnterior = new Date(añoActual, mesActual, -(primerDiaSemana - i - 1));
+    html += `<div class="calendar-day other-month"><span class="calendar-day-number">${diaAnterior.getDate()}</span></div>`;
+  }
+  
+  // Días del mes
+  for (let dia = 1; dia <= diasEnMes; dia++) {
+    const eventosDia = obtenerEventosDia(dia);
+    let clases = 'calendar-day';
+    
+    if (hoy.getDate() === dia && hoy.getMonth() === mesActual && hoy.getFullYear() === añoActual) {
+      clases += ' today';
+    }
+    if (eventosDia.length > 0) {
+      clases += ' has-events';
+    }
+    
+    html += `
+      <div class="${clases}" onclick="verEventosDia(${dia})">
+        <span class="calendar-day-number">${dia}</span>
+        ${eventosDia.length > 0 ? `<span class="calendar-day-count">${eventosDia.length}</span>` : ''}
+      </div>
+    `;
+  }
+  
+  // Días siguientes
+  const diasRestantes = (7 - ((primerDiaSemana + diasEnMes) % 7)) % 7;
+  for (let i = 1; i <= diasRestantes; i++) {
+    html += `<div class="calendar-day other-month"><span class="calendar-day-number">${i}</span></div>`;
+  }
+  
+  html += '</div>';
+  
+  return html;
+}
+
+function obtenerEventosDia(dia) {
+  return eventosFiltrados.filter(ev => {
+    const fechaInicio = parsearFecha(ev["Fecha inicio"]);
+    const fechaFin = parsearFecha(ev["Fecha finalización"]);
+    if (!fechaInicio) return false;
+    
+    const fechaDia = new Date(añoActual, mesActual, dia);
+    fechaDia.setHours(0, 0, 0, 0);
+    
+    const inicio = new Date(fechaInicio);
+    inicio.setHours(0, 0, 0, 0);
+    
+    if (fechaFin) {
+      const fin = new Date(fechaFin);
+      fin.setHours(0, 0, 0, 0);
+      return fechaDia >= inicio && fechaDia <= fin;
+    }
+    
+    return fechaDia.getTime() === inicio.getTime();
+  });
+}
+
+function verEventosDia(dia) {
+  const eventosDia = obtenerEventosDia(dia);
+  if (eventosDia.length === 0) return;
+  
+  const fecha = new Date(añoActual, mesActual, dia);
+  const fechaFormateada = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  
+  // Mostrar en modal drawer
+  document.getElementById('categoryModalIcon').textContent = '📅';
+  document.getElementById('categoryModalName').textContent = fechaFormateada;
+  document.getElementById('categoryModalCount').textContent = eventosDia.length;
+  
+  const lista = document.getElementById('categoryEventsList');
+  lista.innerHTML = '';
+  eventosDia.forEach(ev => lista.appendChild(crearEventoListItem(ev)));
+  
+  document.getElementById('categoryOverlay').classList.add('active');
+  document.getElementById('categoryModal').classList.add('active');
+}
+
+function cambiarMes(direccion) {
+  mesActual += direccion;
+  if (mesActual < 0) { mesActual = 11; añoActual--; }
+  else if (mesActual > 11) { mesActual = 0; añoActual++; }
+  renderizarCalendario();
+}
+
+function irHoy() {
+  const hoy = new Date();
+  mesActual = hoy.getMonth();
+  añoActual = hoy.getFullYear();
+  renderizarCalendario();
+}
+
+// ============================================
+// MODAL DETALLE
+// ============================================
+function abrirModalDetalle(ev) {
+  eventoSeleccionado = ev;
+  
+  const nombre = ev.Evento || ev["ID Eventos"] || 'Sin nombre';
+  const descripcion = ev.Descripción || ev.Descripcion || 'Sin descripción disponible.';
+  const categoria = ev.Categoría || ev.Categoria || '';
+  const centro = ev["Centro Juvenil"] || 'N/A';
+  const programa = ev.Programa || 'N/A';
+  const plazas = ev.Plazas || 'N/A';
+  const estado = calcularEstado(ev);
+  const img = extraerImg(ev["Imagen URL"]) || extraerImg(ev.Cartel) || 'https://placehold.co/600x400/032845/ffffff?text=COAJ';
+  
+  document.getElementById('detailImage').style.backgroundImage = `url('${img}')`;
+  document.getElementById('detailTitle').textContent = nombre;
+  document.getElementById('detailDescription').textContent = descripcion;
+  
+  // Badges
+  const badgesContainer = document.getElementById('detailBadges');
+  badgesContainer.innerHTML = '';
+  
+  if (categoria) {
+    badgesContainer.innerHTML += `<span class="detail-category-badge">${ICONOS[categoria] || '📅'} ${categoria}</span>`;
+  }
+  
+  if (estado) {
+    let statusClass = '';
+    let statusText = '';
+    if (estado === 'Desarrollo') { statusClass = 'status-desarrollo'; statusText = 'En curso'; }
+    else if (estado === 'Programado') { statusClass = 'status-programado'; statusText = 'Próximo'; }
+    else if (estado === 'Finalizado') { statusClass = 'status-finalizado'; statusText = 'Finalizado'; }
+    badgesContainer.innerHTML += `<span class="detail-status-badge ${statusClass}">${statusText}</span>`;
+  }
+  
+  // Info grid
+  document.getElementById('detailInfo').innerHTML = `
+    <div class="detail-info-item">
+      <span class="material-symbols-outlined">event</span>
+      <div>
+        <small>Fecha inicio</small>
+        <strong>${formatearFechaCompleta(ev["Fecha inicio"])}</strong>
+      </div>
+    </div>
+    <div class="detail-info-item">
+      <span class="material-symbols-outlined">event_available</span>
+      <div>
+        <small>Fecha fin</small>
+        <strong>${formatearFechaCompleta(ev["Fecha finalización"])}</strong>
+      </div>
+    </div>
+    <div class="detail-info-item">
+      <span class="material-symbols-outlined">location_on</span>
+      <div>
+        <small>Centro COAJ</small>
+        <strong>${centro}</strong>
+      </div>
+    </div>
+    <div class="detail-info-item">
+      <span class="material-symbols-outlined">folder</span>
+      <div>
+        <small>Programa</small>
+        <strong>${programa}</strong>
+      </div>
+    </div>
+    <div class="detail-info-item">
+      <span class="material-symbols-outlined">groups</span>
+      <div>
+        <small>Plazas</small>
+        <strong>${plazas}</strong>
+      </div>
+    </div>
+  `;
+  
+  // Botón acción
+  const btnAccion = document.getElementById('detailActionBtn');
+  if (estado === 'Finalizado') {
+    btnAccion.disabled = true;
+    btnAccion.innerHTML = '<span class="material-symbols-outlined">event_busy</span> Finalizado';
+  } else {
+    btnAccion.disabled = false;
+    btnAccion.innerHTML = '<span class="material-symbols-outlined">how_to_reg</span> Inscribirme';
+  }
+  
+  document.getElementById('detailModal').classList.add('active');
+  cerrarModalCategoria();
+}
+
+function cerrarModalDetalle() {
+  document.getElementById('detailModal').classList.remove('active');
+  eventoSeleccionado = null;
+}
+
+function cerrarModalCategoria() {
+  document.getElementById('categoryOverlay').classList.remove('active');
+  document.getElementById('categoryModal').classList.remove('active');
+}
+
+function compartirEvento() {
+  if (!eventoSeleccionado) return;
+  
+  const nombre = eventoSeleccionado.Evento || 'Evento COAJ';
+  const texto = `¡Mira este evento de COAJ Madrid! ${nombre}`;
+  
+  if (navigator.share) {
+    navigator.share({ title: nombre, text: texto, url: window.location.href });
+  } else {
+    navigator.clipboard.writeText(texto);
+    mostrarToast('Enlace copiado', 'success');
+  }
+}
+
+// ============================================
+// UTILIDADES
 // ============================================
 function parsearFecha(fechaStr) {
   if (!fechaStr) return null;
-  
   try {
-    if (typeof fechaStr === 'string' && fechaStr.includes("/")) {
-      const fecha = fechaStr.split(" ")[0].split("/");
-      const mes = parseInt(fecha[0]) - 1;
-      const dia = parseInt(fecha[1]);
-      const año = parseInt(fecha[2]);
-      return new Date(año, mes, dia);
+    if (typeof fechaStr === 'string' && fechaStr.includes('/')) {
+      const partes = fechaStr.split(' ')[0].split('/');
+      return new Date(parseInt(partes[2]), parseInt(partes[0]) - 1, parseInt(partes[1]));
     }
-    
-    const fechaObj = new Date(fechaStr);
-    return !isNaN(fechaObj.getTime()) ? fechaObj : null;
-  } catch (e) {
-    return null;
-  }
+    const fecha = new Date(fechaStr);
+    return isNaN(fecha.getTime()) ? null : fecha;
+  } catch { return null; }
 }
 
-// ============================================
-// 📅 Formatear fecha completa
-// ============================================
-function formatearFecha(str) {
-  if (!str) return "Por confirmar";
-  
+function formatearFechaCorta(str) {
+  if (!str) return 'Por confirmar';
   try {
-    if (str.indexOf("/") > -1) {
-      const partes = str.split(" ");
-      const fecha = partes[0].split("/");
-      const mes = parseInt(fecha[0]) - 1;
-      const dia = parseInt(fecha[1]);
-      const anio = parseInt(fecha[2]);
-      const fechaObj = new Date(anio, mes, dia);
-      let resultado = fechaObj.toLocaleDateString("es-ES", { 
-        day: 'numeric', month: 'long', year: 'numeric' 
-      });
-      
+    if (str.includes('/')) {
+      const partes = str.split(' ')[0].split('/');
+      const fecha = new Date(2024, parseInt(partes[0]) - 1, parseInt(partes[1]));
+      return fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    }
+    return str;
+  } catch { return str; }
+}
+
+function formatearFechaCompleta(str) {
+  if (!str) return 'Por confirmar';
+  try {
+    if (str.includes('/')) {
+      const partes = str.split(' ');
+      const fecha = partes[0].split('/');
+      const fechaObj = new Date(parseInt(fecha[2]), parseInt(fecha[0]) - 1, parseInt(fecha[1]));
+      let resultado = fechaObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
       if (partes[1]) {
-        const hora = partes[1].split(":");
-        resultado += " • " + hora[0] + ":" + hora[1];
+        const hora = partes[1].split(':');
+        resultado += ` • ${hora[0]}:${hora[1]}`;
       }
-      
       return resultado;
     }
     return str;
-  } catch (e) {
-    return str;
-  }
+  } catch { return str; }
 }
 
-// ============================================
-// 📅 Formatear fecha corta
-// ============================================
-function formatearFechaCorta(str) {
-  if (!str) return "Por confirmar";
-  
-  try {
-    if (str.indexOf("/") > -1) {
-      const fecha = str.split(" ")[0].split("/");
-      const mes = parseInt(fecha[0]) - 1;
-      const dia = parseInt(fecha[1]);
-      const fechaObj = new Date(2024, mes, dia);
-      return fechaObj.toLocaleDateString("es-ES", { day: 'numeric', month: 'short' });
-    }
-    return str;
-  } catch (e) {
-    return str;
-  }
-}
-
-// ============================================
-// 🔄 Calcular estado automático
-// ============================================
 function calcularEstado(ev) {
   const fechaInicio = parsearFecha(ev["Fecha inicio"]);
   const fechaFin = parsearFecha(ev["Fecha finalización"]);
-  
   if (!fechaInicio) return null;
   
   const hoy = new Date();
@@ -244,607 +915,75 @@ function calcularEstado(ev) {
   return 'Programado';
 }
 
-// ============================================
-// 🖼️ Extraer URL de imagen
-// ============================================
 function extraerImg(url) {
   if (!url) return null;
-  
   if (url.includes('gettablefileurl')) {
     const params = new URLSearchParams(url.split('?')[1] || '');
     const fileName = params.get('fileName');
-    if (!fileName || fileName.trim() === '') return null;
+    if (!fileName || !fileName.trim()) return null;
   }
-  
   return url;
 }
 
-// ============================================
-// 📂 Agrupar por categoría
-// ============================================
-function agrupar(evts) {
-  const grupos = {};
-  
-  evts.forEach(ev => {
-    const cat = ev.Categoría || ev.Categoria || 'Sin Categoría';
-    if (!grupos[cat]) grupos[cat] = [];
-    grupos[cat].push(ev);
-  });
-  
-  return grupos;
-}
-
-// ============================================
-// 🔍 Filtrar eventos
-// ============================================
-function filtrarEventos(evts) {
-  let resultado = evts;
-  
-  if (categoriaActual !== 'todas') {
-    resultado = resultado.filter(ev => {
-      const cat = ev.Categoría || ev.Categoria || 'Sin Categoría';
-      return cat === categoriaActual;
-    });
-  }
-  
-  if (centroActual !== 'todos') {
-    resultado = resultado.filter(ev => ev["Centro Juvenil"] === centroActual);
-  }
-  
-  return resultado;
-}
-
-// ============================================
-// 🏷️ Generar filtros de categoría
-// ============================================
-function generarFiltros(evts) {
-  const container = document.getElementById('filtros');
-  container.innerHTML = '';
-  
-  // Botón "Todas"
-  const btnTodas = document.createElement('button');
-  btnTodas.className = 'filtro-btn active';
-  btnTodas.setAttribute('data-categoria', 'todas');
-  btnTodas.innerHTML = '📌 Todas (' + evts.length + ')';
-  btnTodas.onclick = () => filtrarCategoria('todas');
-  container.appendChild(btnTodas);
-  
-  // Botones por categoría
-  const grupos = agrupar(evts);
-  Object.keys(grupos).sort().forEach(cat => {
-    const icono = ICONOS[cat] || ICONOS.default;
-    const count = grupos[cat].length;
-    
-    const btn = document.createElement('button');
-    btn.className = 'filtro-btn';
-    btn.setAttribute('data-categoria', cat);
-    btn.innerHTML = `${icono} ${cat} (${count})`;
-    btn.onclick = () => filtrarCategoria(cat);
-    container.appendChild(btn);
-  });
-}
-
-// ============================================
-// 🏢 Generar filtros de centros
-// ============================================
-function generarFiltrosCentros(evts) {
-  const container = document.getElementById('filtrosCentros');
-  container.innerHTML = '';
-  
-  const centrosSet = new Set();
-  evts.forEach(ev => {
-    const centro = ev["Centro Juvenil"];
-    if (centro && centro.trim()) centrosSet.add(centro.trim());
-  });
-  
-  const centros = Array.from(centrosSet).sort();
-  
-  if (centros.length === 0) {
-    container.style.display = 'none';
-    return;
-  }
-  
-  container.style.display = 'flex';
-  
-  // Botón "Todos"
-  const btnTodos = document.createElement('button');
-  btnTodos.className = 'filtro-centro-btn active';
-  btnTodos.setAttribute('data-centro', 'todos');
-  btnTodos.innerHTML = '🏢 Todos los Centros (' + evts.length + ')';
-  btnTodos.onclick = () => filtrarCentro('todos');
-  container.appendChild(btnTodos);
-  
-  // Botones por centro
-  centros.forEach(centro => {
-    const count = evts.filter(ev => ev["Centro Juvenil"] === centro).length;
-    
-    const btn = document.createElement('button');
-    btn.className = 'filtro-centro-btn';
-    btn.setAttribute('data-centro', centro);
-    btn.innerHTML = `📍 ${centro} (${count})`;
-    btn.onclick = () => filtrarCentro(centro);
-    container.appendChild(btn);
-  });
-}
-
-// ============================================
-// 🎴 Crear tarjeta de evento
-// ============================================
-function crearCard(ev) {
-  const nombre = ev.Evento || ev["ID Eventos"] || "Sin nombre";
-  const fecha = formatearFechaCorta(ev["Fecha inicio"]);
-  const centro = ev["Centro Juvenil"] || "Sin centro";
-  const estado = calcularEstado(ev) || "";
-  const imgUrl = extraerImg(ev["Imagen URL"]) || extraerImg(ev.Cartel);
-  const img = imgUrl || "https://placehold.co/600x400/032845/ffffff?text=COAJ";
-
-  let badgeHtml = '';
-  if (estado === 'Desarrollo') {
-    badgeHtml = '<span class="badge badge-desarrollo">En curso</span>';
-  } else if (estado === 'Finalizado') {
-    badgeHtml = '<span class="badge badge-finalizado">Finalizado</span>';
-  } else if (estado === 'Programado') {
-    badgeHtml = '<span class="badge badge-programado">Próximo</span>';
-  }
-
-  const card = document.createElement('div');
-  card.className = 'evento-card';
-  
-  const imgElement = document.createElement('img');
-  imgElement.className = 'evento-img';
-  imgElement.src = img;
-  imgElement.alt = nombre;
-  imgElement.onerror = function() {
-    this.src = 'https://placehold.co/600x400/032845/ffffff?text=COAJ';
-  };
-
-  const content = document.createElement('div');
-  content.className = 'evento-content';
-
-  const nombreDiv = document.createElement('div');
-  nombreDiv.className = 'evento-nombre';
-  nombreDiv.textContent = nombre;
-
-  const infoDiv = document.createElement('div');
-  infoDiv.className = 'evento-info';
-  infoDiv.innerHTML = badgeHtml +
-    `<div class="info-item">
-      <div class="info-icon">📅</div>
-      <div class="info-text">${fecha}</div>
-    </div>
-    <div class="info-item">
-      <div class="info-icon">🏢</div>
-      <div class="info-text">${centro}</div>
-    </div>`;
-
-  const btn = document.createElement('button');
-  btn.className = 'btn-ver-mas';
-  btn.textContent = 'Ver más';
-  btn.onclick = () => abrirModal(ev);
-
-  content.appendChild(nombreDiv);
-  content.appendChild(infoDiv);
-  content.appendChild(btn);
-  card.appendChild(imgElement);
-  card.appendChild(content);
-
-  return card;
-}
-
-// ============================================
-// 🎨 RENDERIZAR
-// ============================================
-function render(evts) {
-  const loading = document.getElementById('loading');
-  const empty = document.getElementById('empty');
-  const eventosFiltrados = filtrarEventos(evts);
-
-  if (!eventosFiltrados || eventosFiltrados.length === 0) {
-    loading.style.display = 'none';
-    empty.style.display = 'block';
-    document.getElementById('vistaTarjetas').innerHTML = '';
-    document.getElementById('vistaCalendario').innerHTML = '';
-    return;
-  }
-
-  loading.style.display = 'none';
-  empty.style.display = 'none';
-  
-  if (vistaActual === 'tarjetas') {
-    renderTarjetas(eventosFiltrados);
-  } else {
-    renderCalendario(evts);
-  }
-}
-
-// ============================================
-// 🎴 Renderizar vista tarjetas
-// ============================================
-function renderTarjetas(evts) {
-  const container = document.getElementById('vistaTarjetas');
-  container.innerHTML = '';
-  
-  const grupos = agrupar(evts);
-  const categorias = Object.keys(grupos).sort();
-  
-  if (categoriaActual !== 'todas') {
-    const items = grupos[categoriaActual] || [];
-    if (items.length === 0) return;
-    
-    const grid = document.createElement('div');
-    grid.className = 'eventos-grid';
-    items.forEach(item => grid.appendChild(crearCard(item)));
-    container.appendChild(grid);
-  } else {
-    categorias.forEach(cat => {
-      const items = grupos[cat];
-      const icono = ICONOS[cat] || ICONOS.default;
-
-      const banner = document.createElement('div');
-      banner.className = 'category-banner';
-      banner.innerHTML = `
-        <div class="category-content">
-          <div class="category-info">
-            <div class="category-icon">${icono}</div>
-            <div class="category-title">${cat}</div>
-          </div>
-          <div class="category-count">${items.length}</div>
-        </div>`;
-      container.appendChild(banner);
-
-      const grid = document.createElement('div');
-      grid.className = 'eventos-grid';
-      items.forEach(item => grid.appendChild(crearCard(item)));
-      container.appendChild(grid);
-    });
-  }
-}
-
-// ============================================
-// 📅 Renderizar calendario
-// ============================================
-function renderCalendario(evts) {
-  const container = document.getElementById('vistaCalendario');
-  container.innerHTML = generarCalendario(evts);
-}
-
-// ============================================
-// 📅 Generar calendario HTML
-// ============================================
-function generarCalendario(evts) {
-  const evsFiltrados = filtrarEventos(evts);
-  
-  const primerDia = new Date(añoActual, mesActual, 1);
-  const ultimoDia = new Date(añoActual, mesActual + 1, 0);
-  const diasEnMes = ultimoDia.getDate();
-  const primerDiaSemana = (primerDia.getDay() + 6) % 7;
-  
-  let html = '<div class="calendario-container">';
-  
-  // Header
-  html += `
-    <div class="calendario-header">
-      <div class="calendario-nav">
-        <button class="btn-nav" onclick="cambiarMes(-1)">←</button>
-        <div class="mes-actual">${mesesNombres[mesActual]} ${añoActual}</div>
-        <button class="btn-nav" onclick="cambiarMes(1)">→</button>
-      </div>
-      <button class="btn-hoy" onclick="irHoy()">Hoy</button>
-    </div>`;
-  
-  // Grid
-  html += '<div class="calendario-grid">';
-  
-  // Días de la semana
-  diasSemana.forEach(d => {
-    html += `<div class="dia-semana">${d}</div>`;
-  });
-  
-  // Días vacíos antes
-  for (let i = 0; i < primerDiaSemana; i++) {
-    const diaAnterior = new Date(añoActual, mesActual, -(primerDiaSemana - i - 1));
-    html += `<div class="dia-celda otro-mes"><div class="dia-numero">${diaAnterior.getDate()}</div></div>`;
-  }
-  
-  // Días del mes
+function obtenerProximosEventos(evts, limite) {
   const hoy = new Date();
-  for (let dia = 1; dia <= diasEnMes; dia++) {
-    const eventosDia = evsFiltrados.filter(ev => {
-      if (!ev["Fecha inicio"]) return false;
-      
-      const fechaInicio = parsearFecha(ev["Fecha inicio"]);
-      const fechaFin = parsearFecha(ev["Fecha finalización"]);
-      if (!fechaInicio) return false;
-      
-      const fechaDia = new Date(añoActual, mesActual, dia);
-      
-      if (fechaFin) {
-        return fechaDia >= fechaInicio && fechaDia <= fechaFin;
-      }
-      return fechaDia.getTime() === fechaInicio.getTime();
-    });
-    
-    let clases = 'dia-celda';
-    if (hoy.getDate() === dia && hoy.getMonth() === mesActual && hoy.getFullYear() === añoActual) {
-      clases += ' hoy';
-    }
-    if (eventosDia.length > 0) {
-      clases += ' con-eventos';
-    }
-    
-    html += `<div class="${clases}" onclick="verEventosDia(${dia})">
-      <div class="dia-numero">${dia}</div>
-      ${eventosDia.length > 0 ? `<div class="dia-contador">${eventosDia.length} ev.</div>` : ''}
-    </div>`;
-  }
+  hoy.setHours(0, 0, 0, 0);
   
-  // Días vacíos después
-  const diasRestantes = (7 - ((primerDiaSemana + diasEnMes) % 7)) % 7;
-  for (let i = 1; i <= diasRestantes; i++) {
-    html += `<div class="dia-celda otro-mes"><div class="dia-numero">${i}</div></div>`;
-  }
-  
-  html += '</div></div>';
-  
-  return html;
+  return evts
+    .filter(ev => {
+      const fecha = parsearFecha(ev["Fecha inicio"]);
+      if (!fecha) return false;
+      return fecha >= hoy;
+    })
+    .slice(0, limite);
 }
 
-// ============================================
-// 📅 Ver eventos del día
-// ============================================
-function verEventosDia(dia) {
-  diaSeleccionado = dia;
-  
-  const evsFiltrados = filtrarEventos(eventos);
-  const eventosDia = evsFiltrados.filter(ev => {
-    if (!ev["Fecha inicio"]) return false;
-    
-    const fechaInicio = parsearFecha(ev["Fecha inicio"]);
-    const fechaFin = parsearFecha(ev["Fecha finalización"]);
-    if (!fechaInicio) return false;
-    
-    const fechaDia = new Date(añoActual, mesActual, dia);
-    
-    if (fechaFin) {
-      return fechaDia >= fechaInicio && fechaDia <= fechaFin;
-    }
-    return fechaDia.getTime() === fechaInicio.getTime();
-  });
-  
-  if (eventosDia.length === 0) return;
-  
-  const container = document.getElementById('vistaCalendario');
-  
-  const existente = document.getElementById('eventosDia');
-  if (existente) existente.remove();
-  
-  const fecha = new Date(añoActual, mesActual, dia);
-  const fechaFormateada = fecha.toLocaleDateString('es-ES', { 
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
-  });
-  
-  const textoEventos = eventosDia.length === 1 ? '1 evento' : `${eventosDia.length} eventos`;
-  
-  const html = `
-    <div class="eventos-dia-container" id="eventosDia">
-      <div class="eventos-dia-header">
-        <div class="eventos-dia-titulo">📅 ${fechaFormateada} (${textoEventos})</div>
-        <button class="btn-cerrar-dia" onclick="cerrarEventosDia()">✕</button>
-      </div>
-      <div class="eventos-dia-body">
-        <div class="eventos-grid" id="gridEventosDia"></div>
-      </div>
-    </div>`;
-  
-  container.insertAdjacentHTML('beforeend', html);
-  
-  const grid = document.getElementById('gridEventosDia');
-  eventosDia.forEach(ev => grid.appendChild(crearCard(ev)));
-  
-  document.getElementById('eventosDia').scrollIntoView({ behavior: 'smooth', block: 'start' });
+function mostrarLoading(show) {
+  document.getElementById('loading').classList.toggle('hidden', !show);
 }
 
-// ============================================
-// 📅 Cerrar eventos del día
-// ============================================
-function cerrarEventosDia() {
-  const div = document.getElementById('eventosDia');
-  if (div) div.remove();
-  diaSeleccionado = null;
+function mostrarEmpty(show) {
+  document.getElementById('emptyState').classList.toggle('active', show);
 }
 
-// ============================================
-// 📅 Cambiar mes
-// ============================================
-function cambiarMes(direccion) {
-  mesActual += direccion;
-  
-  if (mesActual < 0) {
-    mesActual = 11;
-    añoActual--;
-  } else if (mesActual > 11) {
-    mesActual = 0;
-    añoActual++;
-  }
-  
-  cerrarEventosDia();
-  render(eventos);
-}
-
-// ============================================
-// 📅 Ir a hoy
-// ============================================
-function irHoy() {
-  const hoy = new Date();
-  mesActual = hoy.getMonth();
-  añoActual = hoy.getFullYear();
-  cerrarEventosDia();
-  render(eventos);
-}
-
-// ============================================
-// 🔀 Cambiar vista
-// ============================================
-function cambiarVista(vista) {
-  vistaActual = vista;
-  
-  document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
-  
-  if (vista === 'tarjetas') {
-    document.querySelectorAll('.view-btn')[0].classList.add('active');
-    document.getElementById('vistaTarjetas').style.display = 'block';
-    document.getElementById('vistaCalendario').style.display = 'none';
-  } else {
-    document.querySelectorAll('.view-btn')[1].classList.add('active');
-    document.getElementById('vistaTarjetas').style.display = 'none';
-    document.getElementById('vistaCalendario').style.display = 'block';
-  }
-  
-  render(eventos);
-}
-
-// ============================================
-// 🏷️ Filtrar por categoría
-// ============================================
-function filtrarCategoria(categoria) {
-  categoriaActual = categoria;
-  
-  document.querySelectorAll('.filtro-btn').forEach(btn => {
-    btn.classList.remove('active');
-    if (btn.getAttribute('data-categoria') === categoria) {
-      btn.classList.add('active');
-    }
-  });
-  
-  cerrarEventosDia();
-  render(eventos);
-}
-
-// ============================================
-// 🏢 Filtrar por centro
-// ============================================
-function filtrarCentro(centro) {
-  centroActual = centro;
-  
-  document.querySelectorAll('.filtro-centro-btn').forEach(btn => {
-    btn.classList.remove('active');
-    if (btn.getAttribute('data-centro') === centro) {
-      btn.classList.add('active');
-    }
-  });
-  
-  cerrarEventosDia();
-  render(eventos);
-}
-
-// ============================================
-// 🔲 Abrir modal
-// ============================================
-function abrirModal(ev) {
-  const modal = document.getElementById('modal');
-  const nombre = ev.Evento || ev["ID Eventos"] || "Sin nombre";
-  const desc = ev.Descripción || ev.Descripcion || "Sin descripción disponible.";
-  const imgUrl = extraerImg(ev["Imagen URL"]) || extraerImg(ev.Cartel);
-  const img = imgUrl || "https://placehold.co/600x400/032845/ffffff?text=COAJ";
-
-  document.getElementById('modalImg').src = img;
-  document.getElementById('modalTitulo').textContent = nombre;
-  document.getElementById('modalDescripcion').textContent = desc;
-
-  const badges = document.getElementById('modalBadges');
-  badges.innerHTML = '';
-
-  const estado = calcularEstado(ev) || '';
-  if (estado === 'Desarrollo') {
-    badges.innerHTML += '<span class="modal-badge badge-desarrollo">En curso</span>';
-  } else if (estado === 'Finalizado') {
-    badges.innerHTML += '<span class="modal-badge badge-finalizado">Finalizado</span>';
-  } else if (estado === 'Programado') {
-    badges.innerHTML += '<span class="modal-badge badge-programado">Próximo</span>';
-  }
-
-  const cat = ev.Categoría || ev.Categoria;
-  if (cat) {
-    badges.innerHTML += `<span class="modal-badge" style="background: #e8552a; color: white;">${cat}</span>`;
-  }
-
-  const info = document.getElementById('modalInfo');
-  info.innerHTML = `
-    <div class="modal-info-card">
-      <small>📅 Del</small>
-      <strong>${formatearFecha(ev["Fecha inicio"])}</strong>
-    </div>
-    <div class="modal-info-card">
-      <small>⏰ Al</small>
-      <strong>${formatearFecha(ev["Fecha finalización"])}</strong>
-    </div>
-    <div class="modal-info-card">
-      <small>🏢 Centro</small>
-      <strong>${ev["Centro Juvenil"] || 'N/A'}</strong>
-    </div>
-    <div class="modal-info-card">
-      <small>📚 Programa</small>
-      <strong>${ev.Programa || 'N/A'}</strong>
-    </div>
-    <div class="modal-info-card">
-      <small>👥 Plazas</small>
-      <strong>${ev.Plazas || 'N/A'}</strong>
-    </div>`;
-
-  modal.classList.add('active');
-  document.body.classList.add('modal-open');
-}
-
-// ============================================
-// ❌ Cerrar modal
-// ============================================
-function cerrarModal(e) {
-  if (!e || e.target.id === 'modal') {
-    document.getElementById('modal').classList.remove('active');
-    document.body.classList.remove('modal-open');
-  }
-}
-
-// ============================================
-// 🔔 Toast
-// ============================================
 function mostrarToast(mensaje, tipo = 'success') {
   const toast = document.getElementById('toast');
   const icon = document.getElementById('toastIcon');
   const msg = document.getElementById('toastMessage');
   
   msg.textContent = mensaje;
-  icon.textContent = tipo === 'success' ? '✓' : '✕';
+  icon.textContent = tipo === 'success' ? 'check_circle' : 'error';
   toast.className = `toast ${tipo} show`;
   
-  setTimeout(() => {
-    toast.classList.remove('show');
-  }, 3000);
+  setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
 // ============================================
-// 📅 Actualizar fecha header
-// ============================================
-function actualizarFecha() {
-  const f = new Date().toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-  document.getElementById('fecha').textContent = f;
-}
-
-// ============================================
-// 🚀 Inicializar
+// INICIALIZACIÓN
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🎯 Inicializando Eventos COAJ...');
-  actualizarFecha();
-  cargarEventos();
+  console.log('🎯 Iniciando Eventos COAJ v4...');
   
-  // ESC para cerrar modal
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') cerrarModal();
+  cargarTema();
+  verificarSesion();
+  
+  const sesion = localStorage.getItem('coaj_sesion');
+  if (sesion) {
+    cargarEventos();
+  }
+  
+  // Cerrar menú al hacer clic fuera
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.avatar-btn') && !e.target.closest('.user-menu')) {
+      cerrarUserMenu();
+    }
+  });
+  
+  // ESC para cerrar modales
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      cerrarModalDetalle();
+      cerrarModalCategoria();
+    }
   });
 });
