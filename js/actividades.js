@@ -1,12 +1,6 @@
 /**
- * COAJ Madrid - Actividades v5
- * 
- * MEJORAS IMPLEMENTADAS:
- * - Persistencia de datos con sessionStorage (no recarga si hay cache válido)
- * - Configuración centralizada desde config.js
- * - Navegación homologada
- * 
- * DEPENDENCIAS: config.js debe cargarse antes
+ * COAJ Madrid - Actividades v6
+ * CON CALENDARIO Y VISTA TOGGLE
  */
 
 // ============================================
@@ -17,7 +11,7 @@ if (typeof COAJ_CONFIG === 'undefined') {
 }
 
 // ============================================
-// CONSTANTES (desde config)
+// CONSTANTES
 // ============================================
 const API_BASE = COAJ_CONFIG?.api?.base || 'https://coajmadrid-8273afef0255.herokuapp.com/api';
 const CACHE_KEY = COAJ_CONFIG?.cache?.key || 'coaj_actividades_cache';
@@ -30,6 +24,12 @@ let actividades = [];
 let actividadVigente = [];
 let actividadSeleccionada = null;
 let categoriaSeleccionada = null;
+let vistaActual = 'tarjetas';
+let mesActual = new Date().getMonth();
+let añoActual = new Date().getFullYear();
+
+const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const diasSemana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 // ============================================
 // INICIALIZACIÓN
@@ -49,18 +49,14 @@ function warmup() {
 }
 
 function setupEventListeners() {
-  // Cerrar menú al hacer clic fuera
   document.addEventListener('click', (e) => {
     const menu = document.getElementById('userMenu');
     const avatar = document.getElementById('headerAvatar');
-    if (menu?.classList.contains('active') && 
-        !menu.contains(e.target) && 
-        !avatar?.contains(e.target)) {
+    if (menu?.classList.contains('active') && !menu.contains(e.target) && !avatar?.contains(e.target)) {
       menu.classList.remove('active');
     }
   });
 
-  // Tecla ESC para cerrar modales
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       cerrarModalDetalle();
@@ -113,7 +109,7 @@ function verificarSesion() {
     loginModal?.classList.add('hidden');
     actualizarUIUsuario(usuario);
     actualizarBottomNav(true);
-    cargarDatos(); // Cargará desde cache si existe
+    cargarDatos();
   } else {
     loginModal?.classList.remove('hidden');
     actualizarBottomNav(false);
@@ -129,9 +125,7 @@ function actualizarUIUsuario(usuario) {
     headerGreeting: `¡Hola, ${primerNombre}!`,
     avatarInitial: inicial,
     menuAvatarInitial: inicial,
-    menuUserName: nombre,
-    bottomAvatarInitial: inicial,
-    bottomUserName: primerNombre
+    menuUserName: nombre
   };
   
   Object.entries(updates).forEach(([id, value]) => {
@@ -223,7 +217,6 @@ function mostrarErrorLogin(mensaje) {
 
 function cerrarSesion() {
   localStorage.removeItem(COAJ_CONFIG?.cache?.userKey || 'coajUsuario');
-  // Limpiar cache al cerrar sesión
   if (typeof CoajCache !== 'undefined') {
     CoajCache.remove(CACHE_KEY);
   }
@@ -231,36 +224,27 @@ function cerrarSesion() {
 }
 
 // ============================================
-// CARGAR DATOS - CON PERSISTENCIA
+// CARGAR DATOS
 // ============================================
 async function cargarDatos(forceRefresh = false) {
   const loading = document.getElementById('loading');
   
-  // ========================================
-  // 1. VERIFICAR CACHE (si no es refresh forzado)
-  // ========================================
   if (!forceRefresh && typeof CoajCache !== 'undefined') {
     const cached = CoajCache.get(CACHE_KEY, CACHE_TTL);
-    
     if (cached) {
       console.log('📦 Usando datos desde cache');
       actividades = cached.actividades || [];
       actividadVigente = cached.actividadVigente || [];
-      
       if (loading) loading.classList.add('hidden');
-      
       if (actividades.length === 0) {
         document.getElementById('emptyState')?.classList.add('active');
       } else {
         renderizarTodo();
       }
-      return; // No hacer petición al servidor
+      return;
     }
   }
 
-  // ========================================
-  // 2. CARGAR DESDE API (cache vacío o expirado)
-  // ========================================
   console.log('🌐 Cargando datos desde API...');
   if (loading) loading.classList.remove('hidden');
   
@@ -273,14 +257,8 @@ async function cargarDatos(forceRefresh = false) {
     
     console.log('✅ Actividades cargadas:', actividades.length);
     
-    // ========================================
-    // 3. GUARDAR EN CACHE
-    // ========================================
     if (typeof CoajCache !== 'undefined') {
-      CoajCache.set(CACHE_KEY, {
-        actividades,
-        actividadVigente
-      });
+      CoajCache.set(CACHE_KEY, { actividades, actividadVigente });
     }
     
     if (loading) loading.classList.add('hidden');
@@ -298,10 +276,6 @@ async function cargarDatos(forceRefresh = false) {
   }
 }
 
-/**
- * Fuerza recarga de datos desde el servidor
- * Llamar cuando el usuario solicite explícitamente actualizar
- */
 function refrescarDatos() {
   console.log('🔄 Refrescando datos...');
   if (typeof CoajCache !== 'undefined') {
@@ -311,33 +285,16 @@ function refrescarDatos() {
   mostrarToast('Actualizando actividades...', 'success');
 }
 
-// Exponer para uso externo (botón de refresh, etc.)
 window.refrescarDatos = refrescarDatos;
 
-function renderizarTodo() {
-  renderizarProximas();
-  renderizarCategorias();
-  renderizarTodasLasActividades();
-  
-  ['upcomingSection', 'categoriesSection', 'allActivitiesSection'].forEach(id => {
-    document.getElementById(id)?.classList.remove('hidden');
-  });
-}
-
 // ============================================
-// UTILIDADES (usando config si está disponible)
+// UTILIDADES
 // ============================================
 function getImagenActividad(actividad) {
   const nombre = actividad.Actividad;
   const vigente = actividadVigente.find(v => v.Actividad === nombre);
-  
   if (vigente?.['URL Actividad']) return vigente['URL Actividad'];
-  
-  // Usar imágenes de config o fallback
-  const imagenes = COAJ_CONFIG?.categories?.images || {
-    'default': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'
-  };
-  
+  const imagenes = COAJ_CONFIG?.categories?.images || { 'default': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400' };
   return imagenes[actividad.Clase] || imagenes.default;
 }
 
@@ -360,9 +317,32 @@ function formatearPeriodo(del, al) {
   return [formatear(del), formatear(al)].filter(Boolean).join(' - ') || 'Por definir';
 }
 
+function parsearFecha(str) {
+  if (!str) return null;
+  try {
+    if (str.includes('/')) {
+      const p = str.split(' ')[0].split('/');
+      return new Date(+p[2], +p[0] - 1, +p[1]);
+    }
+    const d = new Date(str);
+    return isNaN(d) ? null : d;
+  } catch { return null; }
+}
+
 // ============================================
-// RENDERIZADO - PRÓXIMAS
+// RENDERIZADO
 // ============================================
+function renderizarTodo() {
+  renderizarProximas();
+  renderizarCategorias();
+  renderizarTodasLasActividades();
+  renderizarCalendario();
+  
+  ['upcomingSection', 'categoriesSection', 'allActivitiesSection'].forEach(id => {
+    document.getElementById(id)?.classList.remove('hidden');
+  });
+}
+
 function renderizarProximas() {
   const container = document.getElementById('upcomingCarousel');
   if (!container) return;
@@ -396,9 +376,6 @@ function renderizarProximas() {
   }).join('');
 }
 
-// ============================================
-// RENDERIZADO - CATEGORÍAS (Chips)
-// ============================================
 function renderizarCategorias() {
   const container = document.getElementById('categoriesGrid');
   if (!container) return;
@@ -420,15 +397,11 @@ function renderizarCategorias() {
   `).join('');
 }
 
-// ============================================
-// RENDERIZADO - TODAS LAS ACTIVIDADES
-// ============================================
 function renderizarTodasLasActividades() {
   const container = document.getElementById('allActivitiesList');
   const countEl = document.getElementById('totalCount');
   
   if (!container) return;
-  
   if (countEl) countEl.textContent = `${actividades.length} actividades`;
   
   container.innerHTML = actividades.map(a => crearItemLista(a)).join('');
@@ -469,6 +442,143 @@ function crearItemLista(a) {
 }
 
 // ============================================
+// CALENDARIO
+// ============================================
+function renderizarCalendario() {
+  const container = document.getElementById('calendarioContainer');
+  if (!container) return;
+  
+  const primerDia = new Date(añoActual, mesActual, 1);
+  const ultimoDia = new Date(añoActual, mesActual + 1, 0);
+  const diasEnMes = ultimoDia.getDate();
+  const primerDiaSemana = (primerDia.getDay() + 6) % 7;
+  const hoy = new Date();
+  
+  let html = `
+    <div class="calendario-header">
+      <div class="calendario-nav">
+        <button onclick="cambiarMes(-1)">←</button>
+        <span class="calendario-mes">${mesesNombres[mesActual]} ${añoActual}</span>
+        <button onclick="cambiarMes(1)">→</button>
+      </div>
+      <button class="btn-hoy" onclick="irHoy()">Hoy</button>
+    </div>
+    <div class="calendario-grid">
+  `;
+  
+  diasSemana.forEach(d => html += `<div class="calendario-dia-semana">${d}</div>`);
+  
+  for (let i = 0; i < primerDiaSemana; i++) {
+    const d = new Date(añoActual, mesActual, -(primerDiaSemana - i - 1));
+    html += `<div class="calendario-dia otro-mes"><span class="calendario-dia-numero">${d.getDate()}</span></div>`;
+  }
+  
+  for (let dia = 1; dia <= diasEnMes; dia++) {
+    const actividadesDia = getActividadesDia(dia);
+    let clases = 'calendario-dia';
+    
+    if (hoy.getDate() === dia && hoy.getMonth() === mesActual && hoy.getFullYear() === añoActual) {
+      clases += ' hoy';
+    }
+    if (actividadesDia.length > 0) {
+      clases += ' con-eventos';
+    }
+    
+    html += `
+      <div class="${clases}" onclick="verActividadesDia(${dia})">
+        <span class="calendario-dia-numero">${dia}</span>
+        ${actividadesDia.length > 0 ? `<span class="calendario-dia-contador">${actividadesDia.length}</span>` : ''}
+      </div>
+    `;
+  }
+  
+  const diasRestantes = (7 - ((primerDiaSemana + diasEnMes) % 7)) % 7;
+  for (let i = 1; i <= diasRestantes; i++) {
+    html += `<div class="calendario-dia otro-mes"><span class="calendario-dia-numero">${i}</span></div>`;
+  }
+  
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function getActividadesDia(dia) {
+  const diasMap = {
+    'lunes': 1, 'martes': 2, 'miércoles': 3, 'miercoles': 3,
+    'jueves': 4, 'viernes': 5, 'sábado': 6, 'sabado': 6, 'domingo': 0
+  };
+  
+  const fecha = new Date(añoActual, mesActual, dia);
+  const diaSemana = fecha.getDay();
+  
+  return actividades.filter(a => {
+    const dias = (a.Días || a.Dias || '').toLowerCase();
+    for (const [nombre, num] of Object.entries(diasMap)) {
+      if (dias.includes(nombre) && num === diaSemana) return true;
+    }
+    return false;
+  });
+}
+
+function cambiarMes(dir) {
+  mesActual += dir;
+  if (mesActual < 0) { mesActual = 11; añoActual--; }
+  else if (mesActual > 11) { mesActual = 0; añoActual++; }
+  cerrarActividadesDia();
+  renderizarCalendario();
+}
+
+function irHoy() {
+  const hoy = new Date();
+  mesActual = hoy.getMonth();
+  añoActual = hoy.getFullYear();
+  cerrarActividadesDia();
+  renderizarCalendario();
+}
+
+function verActividadesDia(dia) {
+  const actividadesDia = getActividadesDia(dia);
+  if (actividadesDia.length === 0) return;
+  
+  const fecha = new Date(añoActual, mesActual, dia);
+  const fechaTexto = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  
+  const tituloEl = document.getElementById('actividadesDiaTitulo');
+  if (tituloEl) tituloEl.innerHTML = `<span class="icon">📅</span> ${fechaTexto} (${actividadesDia.length})`;
+  
+  const listaEl = document.getElementById('actividadesDiaList');
+  if (listaEl) listaEl.innerHTML = actividadesDia.map(a => crearItemLista(a)).join('');
+  
+  document.getElementById('actividadesDiaSection')?.classList.remove('hidden');
+}
+
+function cerrarActividadesDia() {
+  document.getElementById('actividadesDiaSection')?.classList.add('hidden');
+}
+
+// ============================================
+// CAMBIAR VISTA
+// ============================================
+function cambiarVista(vista) {
+  vistaActual = vista;
+  
+  document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.toLowerCase().includes(vista));
+  });
+  
+  const vistaTarjetas = document.getElementById('vistaTarjetas');
+  const vistaCalendario = document.getElementById('vistaCalendario');
+  
+  if (vista === 'tarjetas') {
+    if (vistaTarjetas) vistaTarjetas.style.display = 'block';
+    if (vistaCalendario) vistaCalendario.style.display = 'none';
+  } else {
+    if (vistaTarjetas) vistaTarjetas.style.display = 'none';
+    if (vistaCalendario) vistaCalendario.style.display = 'block';
+    renderizarCalendario();
+  }
+}
+
+// ============================================
 // BÚSQUEDA
 // ============================================
 function buscarActividades() {
@@ -503,10 +613,8 @@ function buscarActividades() {
   }
   
   section.classList.remove('hidden');
-  
-  ['upcomingSection', 'categoriesSection', 'allActivitiesSection'].forEach(id => {
-    document.getElementById(id)?.classList.add('hidden');
-  });
+  document.getElementById('vistaTarjetas')?.style.setProperty('display', 'none');
+  document.getElementById('vistaCalendario')?.style.setProperty('display', 'none');
 }
 
 function cerrarBusqueda() {
@@ -515,9 +623,11 @@ function cerrarBusqueda() {
   
   document.getElementById('searchResults')?.classList.add('hidden');
   
-  ['upcomingSection', 'categoriesSection', 'allActivitiesSection'].forEach(id => {
-    document.getElementById(id)?.classList.remove('hidden');
-  });
+  if (vistaActual === 'tarjetas') {
+    document.getElementById('vistaTarjetas')?.style.setProperty('display', 'block');
+  } else {
+    document.getElementById('vistaCalendario')?.style.setProperty('display', 'block');
+  }
 }
 
 // ============================================
@@ -533,9 +643,7 @@ function abrirModalCategoria(categoria) {
   document.getElementById('categoryModalCount').textContent = filtradas.length;
   
   const lista = document.getElementById('categoryActivitiesList');
-  if (lista) {
-    lista.innerHTML = filtradas.map(a => crearItemLista(a)).join('');
-  }
+  if (lista) lista.innerHTML = filtradas.map(a => crearItemLista(a)).join('');
   
   document.getElementById('categoryOverlay')?.classList.add('active');
   document.getElementById('categoryModal')?.classList.add('active');
@@ -553,10 +661,7 @@ function cerrarModalCategoria() {
 // MODAL DETALLE
 // ============================================
 function abrirModalDetalle(id) {
-  actividadSeleccionada = actividades.find(a => 
-    (a['ID Actividad'] || a.Actividad) === id
-  );
-  
+  actividadSeleccionada = actividades.find(a => (a['ID Actividad'] || a.Actividad) === id);
   if (!actividadSeleccionada) return;
   
   const a = actividadSeleccionada;
@@ -660,10 +765,7 @@ async function inscribirse() {
     const res = await fetch(`${API_BASE}/inscribir`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        actividad: actividadSeleccionada.Actividad, 
-        usuario: usuario.alias 
-      })
+      body: JSON.stringify({ actividad: actividadSeleccionada.Actividad, usuario: usuario.alias })
     });
     
     const data = await res.json();
@@ -690,11 +792,7 @@ function compartirActividad() {
   const texto = `¡Mira esta actividad en COAJ Madrid! ${actividadSeleccionada.Actividad}`;
   
   if (navigator.share) {
-    navigator.share({
-      title: actividadSeleccionada.Actividad,
-      text: texto,
-      url: window.location.href
-    });
+    navigator.share({ title: actividadSeleccionada.Actividad, text: texto, url: window.location.href });
   } else {
     navigator.clipboard.writeText(texto);
     mostrarToast('Enlace copiado al portapapeles', 'success');
@@ -716,7 +814,5 @@ function mostrarToast(mensaje, tipo = 'success') {
   
   toast.className = `toast show ${tipo}`;
   
-  setTimeout(() => {
-    toast.classList.remove('show');
-  }, 3000);
+  setTimeout(() => { toast.classList.remove('show'); }, 3000);
 }
