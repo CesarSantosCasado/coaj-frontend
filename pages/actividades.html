@@ -68,6 +68,9 @@
         </a>
         
         <div class="header-actions">
+          <button class="icon-btn" onclick="refrescarDatos()" title="Actualizar datos">
+            <span class="material-symbols-outlined">refresh</span>
+          </button>
           <button class="icon-btn" onclick="toggleTheme()" title="Cambiar tema">
             <span class="material-symbols-outlined" id="themeIcon">dark_mode</span>
           </button>
@@ -290,6 +293,9 @@
     <span id="toastMessage">Mensaje</span>
   </div>
 
+  <!-- Configuración centralizada (cargar PRIMERO) -->
+  <script src="../js/config.js"></script>
+  <!-- Lógica de la página -->
   <script src="../js/actividades.js"></script>
 </body>
 </html>
