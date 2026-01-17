@@ -2,114 +2,236 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>COAJ Madrid - Actividades</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/eventos.css">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0..1" rel="stylesheet">
+  <link rel="stylesheet" href="../css/actividades.css">
 </head>
 <body>
-
-  <!-- MODAL DE LOGIN -->
-  <div class="login-modal" id="loginModal">
-    <div class="login-dialog">
+  <!-- LOGIN MODAL -->
+  <div class="login-overlay" id="loginModal">
+    <div class="login-card">
       <div class="login-header">
-        <img src="https://res.cloudinary.com/dstcnsu6a/image/upload/v1764599371/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg.jpg" alt="COAJ Madrid" class="login-logo">
-        <h2>Bienvenido a COAJ Madrid</h2>
-        <p>Accede para ver las actividades</p>
+        <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ" class="login-logo">
+        <h2>Bienvenido a COAJ</h2>
+        <p>Accede para explorar actividades</p>
       </div>
-      
       <div class="login-body">
-        <button class="btn-invitado" onclick="entrarComoInvitado()">
-          👤 Entrar como Invitado
+        <button class="btn-guest" onclick="entrarComoInvitado()">
+          <span class="material-symbols-outlined">person</span>
+          Entrar como Invitado
         </button>
-
-        <div class="login-divider">
-          <span>O</span>
-        </div>
-
+        <div class="login-divider"><span>o inicia sesión</span></div>
         <form id="loginForm" onsubmit="iniciarSesion(event)">
-          <div class="form-group">
-            <label>Usuario (Alias)</label>
-            <input type="text" id="alias" placeholder="Ingresa tu usuario" required>
+          <div class="input-group">
+            <span class="material-symbols-outlined">alternate_email</span>
+            <input type="text" id="alias" placeholder="Tu usuario o alias" required>
           </div>
-          
-          <div class="form-group">
-            <label>Contraseña</label>
-            <input type="password" id="contrasena" placeholder="Ingresa tu contraseña" required>
+          <div class="input-group">
+            <span class="material-symbols-outlined">lock</span>
+            <input type="password" id="contrasena" placeholder="Tu contraseña" required>
           </div>
-
-          <div id="loginError" class="login-error" style="display: none;"></div>
-
+          <div class="login-error" id="loginError"></div>
           <button type="submit" class="btn-login">
-            🔐 Iniciar Sesión
+            <span class="material-symbols-outlined">login</span>
+            Iniciar Sesión
           </button>
         </form>
       </div>
     </div>
   </div>
 
-  <header class="header">
-    <div class="header-content">
-      <div class="logo">
-        <div class="logo-icon">
-          <img src="https://res.cloudinary.com/dstcnsu6a/image/upload/v1764599371/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg.jpg" alt="COAJ Madrid">
-        </div>
-        <div class="logo-text">
-          <h1>Actividades COAJ</h1>
-          <p id="fecha"></p>
+  <!-- APP CONTAINER -->
+  <div class="app-container">
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="header-left">
+        <a href="../index.html" class="header-logo">
+          <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ">
+        </a>
+        <div class="header-info">
+          <span class="header-greeting" id="headerGreeting">¡Hola!</span>
+          <h1 class="header-title" id="headerTitle">Actividades</h1>
         </div>
       </div>
-      <div class="user-info">
-        <span id="nombreUsuario">Invitado</span>
-        <button class="btn-logout" onclick="cerrarSesion()">Salir</button>
+      <div class="header-right">
+        <button class="header-btn" id="btnNotificaciones">
+          <span class="material-symbols-outlined">notifications</span>
+          <span class="notification-badge">3</span>
+        </button>
+        <div class="header-avatar" id="headerAvatar" onclick="toggleUserMenu()">
+          <span id="avatarInitial">U</span>
+        </div>
       </div>
-    </div>
-  </header>
+      <!-- User Menu Dropdown -->
+      <div class="user-menu" id="userMenu">
+        <div class="user-menu-header">
+          <div class="user-menu-avatar"><span id="menuAvatarInitial">U</span></div>
+          <div class="user-menu-info">
+            <strong id="menuUserName">Usuario</strong>
+            <span id="menuUserEmail">usuario@coaj.es</span>
+          </div>
+        </div>
+        <div class="user-menu-divider"></div>
+        <a href="#" class="user-menu-item">
+          <span class="material-symbols-outlined">person</span>
+          Mi Perfil
+        </a>
+        <a href="#" class="user-menu-item">
+          <span class="material-symbols-outlined">bookmark</span>
+          Mis Inscripciones
+        </a>
+        <a href="#" class="user-menu-item">
+          <span class="material-symbols-outlined">settings</span>
+          Configuración
+        </a>
+        <div class="user-menu-divider"></div>
+        <button class="user-menu-item logout" onclick="cerrarSesion()">
+          <span class="material-symbols-outlined">logout</span>
+          Cerrar Sesión
+        </button>
+      </div>
+    </header>
 
-  <div class="container">
-    <div class="view-toggle">
-      <button class="view-btn active" onclick="cambiarVista('tarjetas')">🎴 Ver en Tarjetas</button>
-      <button class="view-btn" onclick="cambiarVista('calendario')">📅 Ver en Calendario</button>
-    </div>
+    <!-- MAIN CONTENT -->
+    <main class="app-main">
+      <!-- Search Bar -->
+      <div class="search-container">
+        <div class="search-box">
+          <span class="material-symbols-outlined">search</span>
+          <input type="text" id="searchInput" placeholder="Buscar actividades, talleres..." oninput="buscarActividades()">
+        </div>
+        <button class="filter-btn" onclick="toggleFiltros()">
+          <span class="material-symbols-outlined">tune</span>
+        </button>
+      </div>
 
-    <div class="filtros-container" id="filtros"></div>
-    <div class="filtros-centros" id="filtrosCentros"></div>
+      <!-- Filtros Panel -->
+      <div class="filtros-panel" id="filtrosPanel">
+        <div class="filtros-header">
+          <h3>Filtros</h3>
+          <button onclick="limpiarFiltros()">Limpiar</button>
+        </div>
+        <div class="filtros-chips" id="filtrosCategorias"></div>
+        <div class="filtros-chips" id="filtrosCentros"></div>
+      </div>
 
-    <div id="loading" class="loading">
-      <div class="spinner"></div>
-      <div class="loading-text">Cargando actividades...</div>
-      <div class="loading-subtext">Espera un momento</div>
-    </div>
+      <!-- Loading -->
+      <div class="loading-container" id="loading">
+        <div class="loading-spinner"></div>
+        <p>Cargando actividades...</p>
+      </div>
 
-    <div id="empty" class="empty" style="display: none;">
-      <div class="empty-icon">🎯</div>
-      <div class="empty-title">No hay actividades</div>
-      <div class="empty-text">No se encontraron actividades para mostrar</div>
-    </div>
+      <!-- Sección: Destacadas -->
+      <section class="section" id="seccionDestacadas">
+        <div class="section-header">
+          <h2>🔥 Destacadas</h2>
+          <button class="section-btn">Ver todas</button>
+        </div>
+        <div class="carousel" id="carouselDestacadas"></div>
+      </section>
 
-    <div id="vistaTarjetas" style="display: block;"></div>
-    <div id="vistaCalendario" style="display: none;"></div>
+      <!-- Sección: Próximamente -->
+      <section class="section" id="seccionProximas">
+        <div class="section-header">
+          <h2>📅 Próximamente</h2>
+          <button class="section-btn">Ver todas</button>
+        </div>
+        <div class="carousel" id="carouselProximas"></div>
+      </section>
+
+      <!-- Sección: Por Categoría -->
+      <section class="section" id="seccionCategorias">
+        <div class="section-header">
+          <h2>🎯 Explorar por categoría</h2>
+        </div>
+        <div class="categories-grid" id="categoriasGrid"></div>
+      </section>
+
+      <!-- Sección: Todas las Actividades -->
+      <section class="section" id="seccionTodas">
+        <div class="section-header">
+          <h2>📋 Todas las actividades</h2>
+          <div class="view-toggle">
+            <button class="view-btn active" onclick="cambiarVistaGrid('grid')" id="btnGrid">
+              <span class="material-symbols-outlined">grid_view</span>
+            </button>
+            <button class="view-btn" onclick="cambiarVistaGrid('list')" id="btnList">
+              <span class="material-symbols-outlined">view_list</span>
+            </button>
+          </div>
+        </div>
+        <div class="activities-grid" id="actividadesGrid"></div>
+      </section>
+
+      <!-- Empty State -->
+      <div class="empty-state" id="emptyState">
+        <span class="material-symbols-outlined">search_off</span>
+        <h3>Sin resultados</h3>
+        <p>No encontramos actividades con esos criterios</p>
+        <button class="btn-primary" onclick="limpiarFiltros()">Limpiar filtros</button>
+      </div>
+    </main>
+
+    <!-- BOTTOM NAV (Móvil) -->
+    <nav class="bottom-nav">
+      <a href="../index.html" class="nav-item">
+        <span class="material-symbols-outlined">home</span>
+        <span>Inicio</span>
+      </a>
+      <a href="#" class="nav-item active">
+        <span class="material-symbols-outlined">local_activity</span>
+        <span>Actividades</span>
+      </a>
+      <button class="nav-item nav-center" onclick="abrirAsesoria()">
+        <span class="material-symbols-outlined">chat</span>
+      </button>
+      <a href="eventos.html" class="nav-item">
+        <span class="material-symbols-outlined">event</span>
+        <span>Eventos</span>
+      </a>
+      <a href="#" class="nav-item" onclick="toggleUserMenu()">
+        <span class="material-symbols-outlined">person</span>
+        <span>Perfil</span>
+      </a>
+    </nav>
   </div>
 
-  <div class="modal" id="modal" onclick="cerrarModal(event)">
-    <div class="modal-dialog" onclick="event.stopPropagation()">
-      <button class="modal-close" onclick="cerrarModal()">✕</button>
-      <div class="modal-body">
-        <img class="modal-header-img" id="modalImg" src="" alt="">
-        <h2 class="modal-title" id="modalTitulo"></h2>
+  <!-- MODAL DETALLE -->
+  <div class="modal-overlay" id="modalDetalle" onclick="cerrarModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="cerrarModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+      <div class="modal-image" id="modalImage"></div>
+      <div class="modal-content">
         <div class="modal-badges" id="modalBadges"></div>
-        <div class="modal-section">
-          <div class="section-title">📝 Descripción</div>
-          <div class="modal-description" id="modalDescripcion"></div>
-        </div>
-        <div class="modal-section">
-          <div class="section-title">📊 Información</div>
-          <div class="modal-grid" id="modalInfo"></div>
+        <h2 class="modal-title" id="modalTitle"></h2>
+        <p class="modal-description" id="modalDescription"></p>
+        
+        <div class="modal-info-grid" id="modalInfo"></div>
+        
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="compartirActividad()">
+            <span class="material-symbols-outlined">share</span>
+            Compartir
+          </button>
+          <button class="btn-primary" id="btnInscribirse" onclick="inscribirse()">
+            <span class="material-symbols-outlined">how_to_reg</span>
+            Inscribirme
+          </button>
         </div>
       </div>
     </div>
   </div>
 
- <script src="../js/app.js"></script>
+  <!-- TOAST -->
+  <div class="toast" id="toast">
+    <span class="material-symbols-outlined" id="toastIcon">check_circle</span>
+    <span id="toastMessage">Mensaje</span>
+  </div>
+
+  <script src="../js/actividades.js"></script>
 </body>
 </html>
