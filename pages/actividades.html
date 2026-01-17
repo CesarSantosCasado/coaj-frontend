@@ -1,259 +1,756 @@
-<!DOCTYPE html>
-<html lang="es" data-theme="light">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>COAJ Madrid - Actividades</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0..1" rel="stylesheet">
-  <link rel="stylesheet" href="../css/actividades.css">
-</head>
-<body>
-  <!-- LOGIN MODAL -->
-  <div class="login-overlay" id="loginModal">
-    <div class="login-card">
-      <div class="login-header">
-        <img src="https://coajmadrid.es/wp-content/uploads/2023/03/cropped-COAJ-1.png" alt="COAJ" class="login-logo">
-        <h2>Bienvenido a COAJ</h2>
-        <p>Accede para explorar actividades</p>
+// ============================================
+// COAJ MADRID - ACTIVIDADES.JS
+// CAMPOS CORRECTOS DEL GAS:
+// Actividad, Centro Juvenil, Clase, Estado, Plazas,
+// Del, Al, Días, ID Actividad, URL Actividad (en actividadVigente)
+// ============================================
+
+const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
+
+let actividades = [];
+let actividadVigente = [];
+let actividadSeleccionada = null;
+let claseActiva = 'Todas';
+let vistaGrid = 'grid';
+let busqueda = '';
+
+// ============================================
+// INICIALIZACIÓN
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  verificarSesion();
+  warmup();
+});
+
+function warmup() {
+  fetch(`${API_BASE}/warmup`).catch(() => {});
+}
+
+// ============================================
+// TEMA CLARO/OSCURO
+// ============================================
+function initTheme() {
+  const savedTheme = localStorage.getItem('coajTheme') || 'light';
+  setTheme(savedTheme);
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  setTheme(newTheme);
+  localStorage.setItem('coajTheme', newTheme);
+}
+
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const isDark = theme === 'dark';
+  
+  const themeIcon = document.getElementById('themeIcon');
+  if (themeIcon) themeIcon.textContent = isDark ? 'light_mode' : 'dark_mode';
+  
+  const menuThemeIcon = document.getElementById('menuThemeIcon');
+  const menuThemeText = document.getElementById('menuThemeText');
+  if (menuThemeIcon) menuThemeIcon.textContent = isDark ? 'light_mode' : 'dark_mode';
+  if (menuThemeText) menuThemeText.textContent = isDark ? 'Modo Claro' : 'Modo Oscuro';
+}
+
+// ============================================
+// SESIÓN
+// ============================================
+function verificarSesion() {
+  const sesion = localStorage.getItem('coajUsuario');
+  const loginModal = document.getElementById('loginModal');
+  
+  if (sesion) {
+    const usuario = JSON.parse(sesion);
+    if (loginModal) loginModal.classList.add('hidden');
+    mostrarUsuario(usuario);
+    actualizarBottomNav(true, usuario);
+    cargarDatos();
+  } else {
+    if (loginModal) loginModal.classList.remove('hidden');
+    actualizarBottomNav(false, null);
+  }
+}
+
+function mostrarUsuario(usuario) {
+  const nombre = usuario.nombre || usuario.alias || 'Usuario';
+  const inicial = nombre.charAt(0).toUpperCase();
+  
+  const headerGreeting = document.getElementById('headerGreeting');
+  const avatarInitial = document.getElementById('avatarInitial');
+  if (headerGreeting) headerGreeting.textContent = `¡Hola, ${nombre.split(' ')[0]}!`;
+  if (avatarInitial) avatarInitial.textContent = inicial;
+  
+  const menuAvatarInitial = document.getElementById('menuAvatarInitial');
+  const menuUserName = document.getElementById('menuUserName');
+  const menuUserEmail = document.getElementById('menuUserEmail');
+  if (menuAvatarInitial) menuAvatarInitial.textContent = inicial;
+  if (menuUserName) menuUserName.textContent = nombre;
+  if (menuUserEmail) menuUserEmail.textContent = usuario.email || `${usuario.alias || 'usuario'}@coaj.es`;
+  
+  // Bottom nav
+  const bottomAvatarInitial = document.getElementById('bottomAvatarInitial');
+  const bottomUserName = document.getElementById('bottomUserName');
+  if (bottomAvatarInitial) bottomAvatarInitial.textContent = inicial;
+  if (bottomUserName) bottomUserName.textContent = nombre.split(' ')[0];
+}
+
+function actualizarBottomNav(logueado, usuario) {
+  const navGuest = document.getElementById('bottomNavGuest');
+  const navUser = document.getElementById('bottomNavUser');
+  
+  if (logueado && usuario) {
+    if (navGuest) navGuest.style.display = 'none';
+    if (navUser) navUser.style.display = 'flex';
+  } else {
+    if (navGuest) navGuest.style.display = 'flex';
+    if (navUser) navUser.style.display = 'none';
+  }
+}
+
+function mostrarLoginModal() {
+  const loginModal = document.getElementById('loginModal');
+  if (loginModal) loginModal.classList.remove('hidden');
+}
+
+// ============================================
+// LOGIN
+// ============================================
+async function iniciarSesion(e) {
+  e.preventDefault();
+  
+  const alias = document.getElementById('alias')?.value.trim();
+  const contrasena = document.getElementById('contrasena')?.value;
+  const errorDiv = document.getElementById('loginError');
+  const btn = document.querySelector('.btn-login');
+  
+  if (!alias || !contrasena) {
+    mostrarErrorLogin('Completa todos los campos');
+    return;
+  }
+  
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Verificando...';
+  }
+  
+  if (errorDiv) errorDiv.style.display = 'none';
+  
+  try {
+    const res = await fetch(`${API_BASE}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias, contrasena })
+    });
+    
+    const data = await res.json();
+    
+    if (data.success) {
+      localStorage.setItem('coajUsuario', JSON.stringify(data.usuario));
+      document.getElementById('loginModal')?.classList.add('hidden');
+      mostrarUsuario(data.usuario);
+      actualizarBottomNav(true, data.usuario);
+      cargarDatos();
+      mostrarToast('¡Bienvenido!', 'success');
+    } else {
+      mostrarErrorLogin(data.message || 'Credenciales incorrectas');
+    }
+  } catch (err) {
+    console.error('Login error:', err);
+    mostrarErrorLogin('Error de conexión');
+  }
+  
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined">login</span> Iniciar Sesión';
+  }
+}
+
+function entrarComoInvitado() {
+  const usuario = { alias: 'invitado', nombre: 'Invitado' };
+  localStorage.setItem('coajUsuario', JSON.stringify(usuario));
+  document.getElementById('loginModal')?.classList.add('hidden');
+  mostrarUsuario(usuario);
+  actualizarBottomNav(true, usuario);
+  cargarDatos();
+}
+
+function mostrarErrorLogin(msg) {
+  const errorDiv = document.getElementById('loginError');
+  if (errorDiv) {
+    errorDiv.textContent = msg;
+    errorDiv.style.display = 'block';
+  }
+}
+
+function cerrarSesion() {
+  localStorage.removeItem('coajUsuario');
+  window.location.href = '../index.html';
+}
+
+// ============================================
+// UI HELPERS
+// ============================================
+function toggleUserMenu() {
+  document.getElementById('userMenu')?.classList.toggle('active');
+}
+
+function toggleFiltros() {
+  const panel = document.getElementById('filtrosPanel');
+  const btn = document.querySelector('.filter-btn');
+  panel?.classList.toggle('active');
+  btn?.classList.toggle('active');
+}
+
+function cambiarVistaGrid(vista) {
+  vistaGrid = vista;
+  document.getElementById('btnGrid')?.classList.toggle('active', vista === 'grid');
+  document.getElementById('btnList')?.classList.toggle('active', vista === 'list');
+  
+  const grid = document.getElementById('actividadesGrid');
+  if (grid) grid.classList.toggle('list-view', vista === 'list');
+}
+
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('userMenu');
+  const avatar = document.getElementById('headerAvatar');
+  
+  if (menu?.classList.contains('active')) {
+    if (!menu.contains(e.target) && !avatar?.contains(e.target)) {
+      menu.classList.remove('active');
+    }
+  }
+});
+
+// ============================================
+// CARGAR DATOS
+// ============================================
+async function cargarDatos() {
+  const loading = document.getElementById('loading');
+  
+  if (loading) loading.classList.remove('hidden');
+  
+  try {
+    const res = await fetch(`${API_BASE}/datos`);
+    const data = await res.json();
+    
+    actividades = data.actividades || [];
+    actividadVigente = data.actividadVigente || [];
+    
+    console.log('✅ Actividades:', actividades.length);
+    console.log('✅ ActividadVigente:', actividadVigente.length);
+    
+    if (actividades.length > 0) {
+      console.log('📋 Campos:', Object.keys(actividades[0]));
+      console.log('📋 Ejemplo:', actividades[0]);
+    }
+    
+    if (actividadVigente.length > 0) {
+      console.log('📋 ActividadVigente campos:', Object.keys(actividadVigente[0]));
+    }
+    
+    if (loading) loading.classList.add('hidden');
+    
+    if (actividades.length === 0) {
+      mostrarEmpty();
+    } else {
+      renderizarDestacadas();
+      renderizarProximas();
+      renderizarClases();
+      renderizarFiltros();
+      renderizarTodas();
+      
+      document.getElementById('seccionDestacadas')?.classList.remove('hidden');
+      document.getElementById('seccionProximas')?.classList.remove('hidden');
+      document.getElementById('seccionCategorias')?.classList.remove('hidden');
+      document.getElementById('seccionTodas')?.classList.remove('hidden');
+    }
+  } catch (err) {
+    console.error('❌ Error:', err);
+    if (loading) loading.classList.add('hidden');
+    mostrarEmpty();
+  }
+}
+
+// ============================================
+// OBTENER IMAGEN - Busca en actividadVigente por nombre
+// ============================================
+function getImagenActividad(actividad) {
+  const nombre = actividad.Actividad;
+  
+  // Buscar en actividadVigente por nombre de actividad
+  const vigente = actividadVigente.find(v => v.Actividad === nombre);
+  
+  if (vigente) {
+    // El campo es "URL Actividad" según el GAS
+    if (vigente['URL Actividad']) return vigente['URL Actividad'];
+    if (vigente.Imagen) return vigente.Imagen;
+  }
+  
+  // Fallback: imagen por defecto según la Clase
+  const imagenes = {
+    'Deporte': 'https://images.unsplash.com/photo-1461896836934- voices-of-youth?w=400',
+    'Arte': 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400',
+    'Música': 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400',
+    'Tecnología': 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400',
+    'Danza': 'https://images.unsplash.com/photo-1508700929628-666bc8bd84ea?w=400',
+    'Teatro': 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=400',
+    'Formación': 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400',
+    'Idiomas': 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=400',
+    'default': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'
+  };
+  
+  return imagenes[actividad.Clase] || imagenes.default;
+}
+
+// ============================================
+// ICONOS POR CLASE
+// ============================================
+function getIconoClase(clase) {
+  const iconos = {
+    'Deporte': '⚽',
+    'Arte': '🎨',
+    'Música': '🎵',
+    'Tecnología': '💻',
+    'Idiomas': '🌍',
+    'Danza': '💃',
+    'Teatro': '🎭',
+    'Cocina': '👨‍🍳',
+    'Fotografía': '📷',
+    'Gaming': '🎮',
+    'Formación': '📚',
+    'Taller': '🔧',
+    'Ocio': '🎉',
+    'default': '🎯'
+  };
+  return iconos[clase] || iconos.default;
+}
+
+// ============================================
+// FORMATEAR FECHAS
+// ============================================
+function formatearFecha(fecha) {
+  if (!fecha) return '';
+  // Formato típico: "1/15/2026 12:00:00 AM"
+  const partes = fecha.split(' ')[0];
+  if (partes.includes('/')) {
+    const [mes, dia, anio] = partes.split('/');
+    return `${dia}/${mes}/${anio}`;
+  }
+  return fecha;
+}
+
+function formatearPeriodo(del, al) {
+  if (!del && !al) return 'Por definir';
+  const fechaDel = formatearFecha(del);
+  const fechaAl = formatearFecha(al);
+  if (fechaDel && fechaAl) return `${fechaDel} - ${fechaAl}`;
+  return fechaDel || fechaAl || 'Por definir';
+}
+
+// ============================================
+// RENDERIZADO
+// ============================================
+function renderizarDestacadas() {
+  const container = document.getElementById('carouselDestacadas');
+  if (!container) return;
+  
+  const destacadas = actividades.slice(0, 5);
+  container.innerHTML = destacadas.map(a => crearCardCarousel(a, 'badge-semana', '')).join('');
+}
+
+function renderizarProximas() {
+  const container = document.getElementById('carouselProximas');
+  if (!container) return;
+  
+  const proximas = actividades.slice(0, 6);
+  container.innerHTML = proximas.map((a, i) => {
+    const badgeClass = i === 0 ? 'badge-hoy' : i === 1 ? 'badge-manana' : 'badge-semana';
+    // Campo correcto es "Días" (con tilde)
+    const dias = a.Días || a.Dias || '';
+    const primerDia = dias.split(',')[0]?.trim() || 'Próximo';
+    const badgeText = i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : primerDia;
+    return crearCardCarousel(a, badgeClass, badgeText);
+  }).join('');
+}
+
+function crearCardCarousel(a, badgeClass, badgeText) {
+  const img = getImagenActividad(a);
+  const dias = a.Días || a.Dias || 'Por definir';
+  const texto = badgeText || dias.split(',')[0]?.trim() || 'Próximo';
+  const id = a['ID Actividad'] || a.Actividad;
+  
+  return `
+    <div class="activity-card" onclick="abrirModal('${id}')">
+      <div class="activity-card-image" style="background-image: url('${img}')">
+        <span class="activity-card-badge ${badgeClass}">${texto}</span>
       </div>
-      <div class="login-body">
-        <button class="btn-guest" onclick="entrarComoInvitado()">
-          <span class="material-symbols-outlined">person</span>
-          Entrar como Invitado
-        </button>
-        <div class="login-divider"><span>o inicia sesión</span></div>
-        <form id="loginForm" onsubmit="iniciarSesion(event)">
-          <div class="input-group">
-            <span class="material-symbols-outlined">alternate_email</span>
-            <input type="text" id="alias" placeholder="Tu usuario o alias" required>
+      <div class="activity-card-content">
+        <h3 class="activity-card-title">${a.Actividad || 'Sin título'}</h3>
+        <div class="activity-card-meta">
+          <div class="activity-card-meta-item">
+            <span class="material-symbols-outlined">event</span>
+            ${dias}
           </div>
-          <div class="input-group">
-            <span class="material-symbols-outlined">lock</span>
-            <input type="password" id="contrasena" placeholder="Tu contraseña" required>
+          <div class="activity-card-meta-item">
+            <span class="material-symbols-outlined">location_on</span>
+            ${a['Centro Juvenil'] || 'COAJ Madrid'}
           </div>
-          <div class="login-error" id="loginError"></div>
-          <button type="submit" class="btn-login">
-            <span class="material-symbols-outlined">login</span>
-            Iniciar Sesión
-          </button>
-        </form>
+        </div>
       </div>
     </div>
-  </div>
+  `;
+}
 
-  <!-- APP -->
-  <div class="app-container">
-    <!-- HEADER -->
-    <header class="app-header">
-      <div class="header-left">
-        <a href="../index.html" class="header-logo">
-          <img src="https://coajmadrid.es/wp-content/uploads/2023/03/cropped-COAJ-1.png" alt="COAJ">
-        </a>
-        <div class="header-info">
-          <span class="header-greeting" id="headerGreeting">¡Hola!</span>
-          <h1 class="header-title">Actividades</h1>
+function renderizarClases() {
+  const container = document.getElementById('categoriasGrid');
+  if (!container) return;
+  
+  // Contar por "Clase" (campo correcto del GAS)
+  const clases = {};
+  actividades.forEach(a => {
+    const clase = a.Clase || 'Otros';
+    clases[clase] = (clases[clase] || 0) + 1;
+  });
+  
+  container.innerHTML = Object.entries(clases).map(([clase, count]) => `
+    <div class="category-card ${claseActiva === clase ? 'active' : ''}" onclick="filtrarPorClase('${clase}')">
+      <div class="category-icon">${getIconoClase(clase)}</div>
+      <div class="category-name">${clase}</div>
+      <div class="category-count">${count} actividad${count !== 1 ? 'es' : ''}</div>
+    </div>
+  `).join('');
+}
+
+function renderizarFiltros() {
+  const catContainer = document.getElementById('filtrosCategorias');
+  if (!catContainer) return;
+  
+  const clases = ['Todas', ...new Set(actividades.map(a => a.Clase).filter(Boolean))];
+  
+  catContainer.innerHTML = clases.map(clase => `
+    <button class="chip ${claseActiva === clase ? 'active' : ''}" onclick="filtrarPorClase('${clase}')">${clase}</button>
+  `).join('');
+}
+
+function renderizarTodas() {
+  const container = document.getElementById('actividadesGrid');
+  if (!container) return;
+  
+  let filtradas = actividades;
+  
+  // Filtrar por "Clase" (campo correcto)
+  if (claseActiva !== 'Todas') {
+    filtradas = filtradas.filter(a => a.Clase === claseActiva);
+  }
+  
+  // Búsqueda
+  if (busqueda) {
+    const term = busqueda.toLowerCase();
+    filtradas = filtradas.filter(a => 
+      (a.Actividad || '').toLowerCase().includes(term) ||
+      (a.Clase || '').toLowerCase().includes(term) ||
+      (a['Centro Juvenil'] || '').toLowerCase().includes(term)
+    );
+  }
+  
+  if (filtradas.length === 0) {
+    container.innerHTML = '';
+    document.getElementById('emptyState')?.classList.add('active');
+    return;
+  }
+  
+  document.getElementById('emptyState')?.classList.remove('active');
+  container.innerHTML = filtradas.map(a => crearCardGrid(a)).join('');
+}
+
+function crearCardGrid(a) {
+  const img = getImagenActividad(a);
+  const estado = a.Estado || 'Programado';
+  const estadoClass = estado.toLowerCase().includes('desarrollo') ? 'desarrollo' 
+                    : estado.toLowerCase().includes('final') ? 'finalizado' 
+                    : 'programado';
+  const id = a['ID Actividad'] || a.Actividad;
+  const dias = a.Días || a.Dias || 'Por definir';
+  
+  return `
+    <div class="activity-grid-card" onclick="abrirModal('${id}')">
+      <div class="activity-grid-image" style="background-image: url('${img}')"></div>
+      <div class="activity-grid-content">
+        <div class="activity-grid-badges">
+          ${a.Clase ? `<span class="activity-badge badge-categoria">${a.Clase}</span>` : ''}
+          <span class="activity-badge badge-estado-${estadoClass}">${estado}</span>
         </div>
-      </div>
-      <div class="header-right">
-        <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">
-          <span class="material-symbols-outlined" id="themeIcon">dark_mode</span>
-        </button>
-        <button class="header-btn">
-          <span class="material-symbols-outlined">notifications</span>
-          <span class="notification-badge">3</span>
-        </button>
-        <div class="header-avatar" id="headerAvatar" onclick="toggleUserMenu()">
-          <span id="avatarInitial">U</span>
-        </div>
-      </div>
-      <!-- User Menu -->
-      <div class="user-menu" id="userMenu">
-        <div class="user-menu-header">
-          <div class="user-menu-avatar"><span id="menuAvatarInitial">U</span></div>
-          <div class="user-menu-info">
-            <strong id="menuUserName">Usuario</strong>
-            <span id="menuUserEmail">usuario@coaj.es</span>
+        <h3 class="activity-grid-title">${a.Actividad || 'Sin título'}</h3>
+        <p class="activity-grid-description">${a['Centro Juvenil'] || 'Centro Juvenil COAJ Madrid'}</p>
+        <div class="activity-grid-footer">
+          <div class="activity-grid-info">
+            <div class="activity-grid-info-item">
+              <span class="material-symbols-outlined">event</span>
+              ${dias}
+            </div>
+            <div class="activity-grid-info-item">
+              <span class="material-symbols-outlined">group</span>
+              ${a.Plazas || '∞'}
+            </div>
           </div>
-        </div>
-        <div class="user-menu-divider"></div>
-        <a href="#" class="user-menu-item">
-          <span class="material-symbols-outlined">person</span>
-          Mi Perfil
-        </a>
-        <a href="#" class="user-menu-item">
-          <span class="material-symbols-outlined">bookmark</span>
-          Mis Inscripciones
-        </a>
-        <button class="user-menu-item" onclick="toggleTheme()">
-          <span class="material-symbols-outlined" id="menuThemeIcon">dark_mode</span>
-          <span id="menuThemeText">Modo Oscuro</span>
-        </button>
-        <div class="user-menu-divider"></div>
-        <button class="user-menu-item logout" onclick="cerrarSesion()">
-          <span class="material-symbols-outlined">logout</span>
-          Cerrar Sesión
-        </button>
-      </div>
-    </header>
-
-    <!-- MAIN -->
-    <main class="app-main">
-      <!-- Search -->
-      <div class="search-container">
-        <div class="search-box">
-          <span class="material-symbols-outlined">search</span>
-          <input type="text" id="searchInput" placeholder="Buscar actividades..." oninput="buscarActividades()">
-        </div>
-        <button class="filter-btn" onclick="toggleFiltros()">
-          <span class="material-symbols-outlined">tune</span>
-        </button>
-      </div>
-
-      <!-- Filtros -->
-      <div class="filtros-panel" id="filtrosPanel">
-        <div class="filtros-header">
-          <h3>Filtros</h3>
-          <button onclick="limpiarFiltros()">Limpiar</button>
-        </div>
-        <div class="filtros-chips" id="filtrosCategorias"></div>
-      </div>
-
-      <!-- Loading -->
-      <div class="loading-container" id="loading">
-        <div class="loading-spinner"></div>
-        <p>Cargando actividades...</p>
-      </div>
-
-      <!-- Destacadas -->
-      <section class="section hidden" id="seccionDestacadas">
-        <div class="section-header">
-          <h2>🔥 Destacadas</h2>
-        </div>
-        <div class="carousel" id="carouselDestacadas"></div>
-      </section>
-
-      <!-- Próximas -->
-      <section class="section hidden" id="seccionProximas">
-        <div class="section-header">
-          <h2>📅 Próximamente</h2>
-        </div>
-        <div class="carousel" id="carouselProximas"></div>
-      </section>
-
-      <!-- Categorías -->
-      <section class="section hidden" id="seccionCategorias">
-        <div class="section-header">
-          <h2>🎯 Por categoría</h2>
-        </div>
-        <div class="categories-grid" id="categoriasGrid"></div>
-      </section>
-
-      <!-- Todas -->
-      <section class="section hidden" id="seccionTodas">
-        <div class="section-header">
-          <h2>📋 Todas las actividades</h2>
-          <div class="view-toggle">
-            <button class="view-btn active" onclick="cambiarVistaGrid('grid')" id="btnGrid">
-              <span class="material-symbols-outlined">grid_view</span>
-            </button>
-            <button class="view-btn" onclick="cambiarVistaGrid('list')" id="btnList">
-              <span class="material-symbols-outlined">view_list</span>
-            </button>
-          </div>
-        </div>
-        <div class="activities-grid" id="actividadesGrid"></div>
-      </section>
-
-      <!-- Empty -->
-      <div class="empty-state" id="emptyState">
-        <span class="material-symbols-outlined">search_off</span>
-        <h3>Sin resultados</h3>
-        <p>No encontramos actividades</p>
-        <button class="btn-primary" onclick="limpiarFiltros()">Limpiar filtros</button>
-      </div>
-    </main>
-
-    <!-- BOTTOM NAV - UN SOLO NAV -->
-    <nav class="bottom-nav">
-      <!-- Guest -->
-      <div id="bottomNavGuest" class="nav-items">
-        <a href="../index.html" class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <span>Inicio</span>
-        </a>
-        <a href="../pages/eventos.html" class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <span>Eventos</span>
-        </a>
-        <a href="#" class="nav-item active">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-          <span>Actividades</span>
-        </a>
-        <button class="nav-item" onclick="mostrarLoginModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-          <span>Entrar</span>
-        </button>
-      </div>
-
-      <!-- User -->
-      <div id="bottomNavUser" class="nav-items" style="display:none;">
-        <a href="../index.html" class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <span>Inicio</span>
-        </a>
-        <a href="../pages/eventos.html" class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <span>Eventos</span>
-        </a>
-        <a href="#" class="nav-item active">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-          <span>Actividades</span>
-        </a>
-        <div class="nav-item nav-user">
-          <div class="nav-avatar" id="bottomUserAvatar"><span id="bottomAvatarInitial">U</span></div>
-          <span id="bottomUserName">Usuario</span>
-        </div>
-        <button class="nav-item" onclick="cerrarSesion()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          <span>Salir</span>
-        </button>
-      </div>
-    </nav>
-  </div>
-
-  <!-- MODAL -->
-  <div class="modal-overlay" id="modalDetalle" onclick="cerrarModal(event)">
-    <div class="modal-card" onclick="event.stopPropagation()">
-      <button class="modal-close" onclick="cerrarModal()">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-      <div class="modal-image" id="modalImage"></div>
-      <div class="modal-content">
-        <div class="modal-badges" id="modalBadges"></div>
-        <h2 class="modal-title" id="modalTitle"></h2>
-        <p class="modal-description" id="modalDescription"></p>
-        <div class="modal-info-grid" id="modalInfo"></div>
-        <div class="modal-actions">
-          <button class="btn-secondary" onclick="compartirActividad()">
-            <span class="material-symbols-outlined">share</span>
-            Compartir
-          </button>
-          <button class="btn-primary" id="btnInscribirse">
-            <span class="material-symbols-outlined">how_to_reg</span>
-            Inscribirme
-          </button>
+          <button class="activity-grid-btn">Ver más</button>
         </div>
       </div>
     </div>
-  </div>
+  `;
+}
 
-  <!-- TOAST -->
-  <div class="toast" id="toast">
-    <span class="material-symbols-outlined" id="toastIcon">check_circle</span>
-    <span id="toastMessage">Mensaje</span>
-  </div>
+function mostrarEmpty() {
+  document.getElementById('emptyState')?.classList.add('active');
+  document.getElementById('seccionDestacadas')?.classList.add('hidden');
+  document.getElementById('seccionProximas')?.classList.add('hidden');
+  document.getElementById('seccionCategorias')?.classList.add('hidden');
+  document.getElementById('seccionTodas')?.classList.add('hidden');
+}
 
-  <script src="../js/actividades.js"></script>
-</body>
-</html>
+// ============================================
+// FILTROS Y BÚSQUEDA
+// ============================================
+function filtrarPorClase(clase) {
+  claseActiva = clase;
+  
+  document.querySelectorAll('.category-card').forEach(card => {
+    const nombre = card.querySelector('.category-name')?.textContent;
+    card.classList.toggle('active', nombre === clase);
+  });
+  
+  document.querySelectorAll('#filtrosCategorias .chip').forEach(chip => {
+    chip.classList.toggle('active', chip.textContent === clase);
+  });
+  
+  renderizarTodas();
+}
+
+function buscarActividades() {
+  busqueda = document.getElementById('searchInput')?.value.trim() || '';
+  renderizarTodas();
+}
+
+function limpiarFiltros() {
+  claseActiva = 'Todas';
+  busqueda = '';
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) searchInput.value = '';
+  renderizarClases();
+  renderizarFiltros();
+  renderizarTodas();
+  document.getElementById('emptyState')?.classList.remove('active');
+}
+
+// ============================================
+// MODAL DETALLE - CAMPOS CORRECTOS DEL GAS
+// ============================================
+function abrirModal(id) {
+  // Buscar por "ID Actividad" o por nombre
+  actividadSeleccionada = actividades.find(a => 
+    (a['ID Actividad'] || a.Actividad) === id
+  );
+  
+  if (!actividadSeleccionada) {
+    console.error('Actividad no encontrada:', id);
+    return;
+  }
+  
+  const a = actividadSeleccionada;
+  const modal = document.getElementById('modalDetalle');
+  
+  // Imagen
+  const modalImage = document.getElementById('modalImage');
+  if (modalImage) {
+    modalImage.style.backgroundImage = `url('${getImagenActividad(a)}')`;
+  }
+  
+  // Badges
+  const estado = a.Estado || 'Programado';
+  const estadoClass = estado.toLowerCase().includes('desarrollo') ? 'desarrollo' 
+                    : estado.toLowerCase().includes('final') ? 'finalizado' 
+                    : 'programado';
+  
+  const modalBadges = document.getElementById('modalBadges');
+  if (modalBadges) {
+    modalBadges.innerHTML = `
+      ${a.Clase ? `<span class="activity-badge badge-categoria">${a.Clase}</span>` : ''}
+      <span class="activity-badge badge-estado-${estadoClass}">${estado}</span>
+    `;
+  }
+  
+  // Título
+  const modalTitle = document.getElementById('modalTitle');
+  if (modalTitle) modalTitle.textContent = a.Actividad || 'Sin título';
+  
+  // Descripción
+  const modalDescription = document.getElementById('modalDescription');
+  if (modalDescription) {
+    modalDescription.textContent = `Actividad de ${a.Clase || 'formación'} en ${a['Centro Juvenil'] || 'COAJ Madrid'}`;
+  }
+  
+  // Info Grid - CAMPOS CORRECTOS DEL GAS
+  const dias = a.Días || a.Dias || 'Por definir';
+  const modalInfo = document.getElementById('modalInfo');
+  if (modalInfo) {
+    modalInfo.innerHTML = `
+      <div class="modal-info-item">
+        <small><span class="material-symbols-outlined">location_on</span> Centro</small>
+        <strong>${a['Centro Juvenil'] || 'Por definir'}</strong>
+      </div>
+      <div class="modal-info-item">
+        <small><span class="material-symbols-outlined">event</span> Días</small>
+        <strong>${dias}</strong>
+      </div>
+      <div class="modal-info-item">
+        <small><span class="material-symbols-outlined">date_range</span> Periodo</small>
+        <strong>${formatearPeriodo(a.Del, a.Al)}</strong>
+      </div>
+      <div class="modal-info-item">
+        <small><span class="material-symbols-outlined">group</span> Plazas</small>
+        <strong>${a.Plazas || 'Ilimitadas'}</strong>
+      </div>
+      <div class="modal-info-item">
+        <small><span class="material-symbols-outlined">category</span> Clase</small>
+        <strong>${a.Clase || 'General'}</strong>
+      </div>
+      <div class="modal-info-item">
+        <small><span class="material-symbols-outlined">info</span> Estado</small>
+        <strong>${estado}</strong>
+      </div>
+    `;
+  }
+  
+  // Botón inscripción
+  const btnInscribirse = document.getElementById('btnInscribirse');
+  if (btnInscribirse) {
+    if (puedeInscribirse()) {
+      btnInscribirse.innerHTML = '<span class="material-symbols-outlined">how_to_reg</span> Inscribirme';
+      btnInscribirse.onclick = inscribirse;
+    } else {
+      btnInscribirse.innerHTML = '<span class="material-symbols-outlined">login</span> Inicia sesión';
+      btnInscribirse.onclick = () => { cerrarModal(); mostrarLoginModal(); };
+    }
+  }
+  
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function cerrarModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  
+  const modal = document.getElementById('modalDetalle');
+  if (modal) {
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  actividadSeleccionada = null;
+}
+
+function puedeInscribirse() {
+  const sesion = localStorage.getItem('coajUsuario');
+  if (!sesion) return false;
+  const usuario = JSON.parse(sesion);
+  return usuario.alias !== 'invitado';
+}
+
+// ============================================
+// INSCRIPCIÓN
+// ============================================
+async function inscribirse() {
+  if (!actividadSeleccionada) return;
+  
+  const sesion = localStorage.getItem('coajUsuario');
+  if (!sesion) {
+    mostrarToast('Debes iniciar sesión', 'error');
+    return;
+  }
+  
+  const usuario = JSON.parse(sesion);
+  if (usuario.alias === 'invitado') {
+    mostrarToast('Los invitados no pueden inscribirse', 'error');
+    return;
+  }
+  
+  const btn = document.getElementById('btnInscribirse');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Procesando...';
+  }
+  
+  try {
+    const res = await fetch(`${API_BASE}/inscribir`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        actividad: actividadSeleccionada.Actividad, 
+        usuario: usuario.alias 
+      })
+    });
+    
+    const data = await res.json();
+    
+    if (data.success) {
+      mostrarToast('¡Inscripción exitosa!', 'success');
+      cerrarModal();
+    } else {
+      mostrarToast(data.message || 'Error al inscribirse', 'error');
+    }
+  } catch (err) {
+    console.error('Error inscripción:', err);
+    mostrarToast('Error de conexión', 'error');
+  }
+  
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined">how_to_reg</span> Inscribirme';
+  }
+}
+
+function compartirActividad() {
+  if (!actividadSeleccionada) return;
+  
+  if (navigator.share) {
+    navigator.share({
+      title: actividadSeleccionada.Actividad,
+      text: `¡Mira esta actividad en COAJ Madrid!`,
+      url: window.location.href
+    });
+  } else {
+    navigator.clipboard.writeText(window.location.href);
+    mostrarToast('Enlace copiado', 'success');
+  }
+}
+
+// ============================================
+// TOAST
+// ============================================
+function mostrarToast(mensaje, tipo = 'success') {
+  const toast = document.getElementById('toast');
+  const icon = document.getElementById('toastIcon');
+  const msg = document.getElementById('toastMessage');
+  
+  if (!toast) return;
+  
+  if (icon) icon.textContent = tipo === 'success' ? 'check_circle' : 'error';
+  if (msg) msg.textContent = mensaje;
+  toast.className = `toast show ${tipo}`;
+  
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ============================================
+// KEYBOARD
+// ============================================
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    cerrarModal();
+    document.getElementById('userMenu')?.classList.remove('active');
+  }
+});
