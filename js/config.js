@@ -15,6 +15,7 @@ const COAJ_CONFIG = {
       login: '/login',
       registro: '/registro',
       datos: '/datos',
+      eventos: '/eventos',
       inscribir: '/inscribir',
       warmup: '/warmup'
     }
@@ -25,6 +26,7 @@ const COAJ_CONFIG = {
   // ============================================
   cache: {
     key: 'coaj_actividades_cache',
+    eventosKey: 'coaj_eventos_cache',
     userKey: 'coajUsuario',
     themeKey: 'coajTheme',
     ttl: 5 * 60 * 1000 // 5 minutos en milisegundos
@@ -129,6 +131,23 @@ const COAJ_CONFIG = {
       'Formación': 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=400',
       'Idiomas': 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=400',
       'default': 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'
+    }
+  },
+
+  // ============================================
+  // EVENTOS - Iconos por categoría
+  // ============================================
+  eventos: {
+    icons: {
+      'Artística': '🎨',
+      'Deportiva': '⚽',
+      'Ocio y Tiempo Libre': '🎮',
+      'Cultural': '📚',
+      'Social': '🤝',
+      'Educativa': '🎓',
+      'Tecnológica': '💻',
+      'Ambiental': '🌿',
+      'default': '📌'
     }
   }
 };
