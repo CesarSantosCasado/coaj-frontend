@@ -1,6 +1,6 @@
 // ============================================
 // COAJ MADRID - AUTH.JS
-// Sistema de autenticación
+// Sistema de autenticación + Bottom Nav Móvil
 // ============================================
 
 const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
@@ -20,6 +20,11 @@ function verificarSesion() {
 }
 
 function mostrarUsuarioLogueado(usuario) {
+  const inicial = (usuario.nombre || usuario.alias || 'U').charAt(0).toUpperCase();
+  const nombre = usuario.nombre || usuario.alias;
+  const nombreCorto = nombre.split(' ')[0];
+
+  // Desktop
   const headerAuth = document.getElementById('headerAuth');
   const headerUser = document.getElementById('headerUser');
   const nombreUsuario = document.getElementById('nombreUsuario');
@@ -27,18 +32,37 @@ function mostrarUsuarioLogueado(usuario) {
   
   if (headerAuth) headerAuth.style.display = 'none';
   if (headerUser) headerUser.style.display = 'flex';
-  if (nombreUsuario) nombreUsuario.textContent = usuario.nombre || usuario.alias;
-  if (userInitial) userInitial.textContent = (usuario.nombre || usuario.alias || 'U').charAt(0).toUpperCase();
+  if (nombreUsuario) nombreUsuario.textContent = nombre;
+  if (userInitial) userInitial.textContent = inicial;
+
+  // Móvil - Bottom Nav
+  const bottomNavGuest = document.getElementById('bottomNavGuest');
+  const bottomNavUser = document.getElementById('bottomNavUser');
+  const bottomUserInitial = document.getElementById('bottomUserInitial');
+  const bottomUserName = document.getElementById('bottomUserName');
+
+  if (bottomNavGuest) bottomNavGuest.style.display = 'none';
+  if (bottomNavUser) bottomNavUser.style.display = 'flex';
+  if (bottomUserInitial) bottomUserInitial.textContent = inicial;
+  if (bottomUserName) bottomUserName.textContent = nombreCorto;
 }
 
 function cerrarSesion() {
   localStorage.removeItem('coajUsuario');
   
+  // Desktop
   const headerAuth = document.getElementById('headerAuth');
   const headerUser = document.getElementById('headerUser');
   
   if (headerAuth) headerAuth.style.display = 'flex';
   if (headerUser) headerUser.style.display = 'none';
+
+  // Móvil - Bottom Nav
+  const bottomNavGuest = document.getElementById('bottomNavGuest');
+  const bottomNavUser = document.getElementById('bottomNavUser');
+
+  if (bottomNavGuest) bottomNavGuest.style.display = 'flex';
+  if (bottomNavUser) bottomNavUser.style.display = 'none';
   
   toast('Sesión cerrada correctamente', 'success');
 }
@@ -374,20 +398,26 @@ function togglePassword(inputId, btn) {
 }
 
 // ============================================
+// WARMUP
+// ============================================
+function warmup() {
+  fetch(`${API_BASE}/warmup`).catch(() => {});
+}
+
+// ============================================
 // EVENT LISTENERS
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
-  // Verificar sesión
   verificarSesion();
+  warmup();
+  setInterval(warmup, 840000);
   
-  // Listener para alias
   const aliasInput = document.getElementById('regAlias');
   if (aliasInput) {
     aliasInput.addEventListener('input', (e) => verificarAliasDisponible(e.target.value.trim()));
   }
 });
 
-// ESC para cerrar modal
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     cerrarModalAuth();
