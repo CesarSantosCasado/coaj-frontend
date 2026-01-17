@@ -1,6 +1,6 @@
 /* ============================================
    COAJ MADRID - ACTIVIDADES CSS
-   Diseño moderno App/Dashboard
+   Modo Claro/Oscuro + Bottom Nav Homologado
    ============================================ */
 
 :root {
@@ -14,19 +14,23 @@
   --amarillo: #f59e0b;
   --rojo: #ef4444;
   
-  /* Neutros */
-  --bg-light: #f8fafc;
+  /* Modo Claro (default) */
+  --bg-body: #f8fafc;
   --bg-card: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-input: #f8fafc;
   --border: #e2e8f0;
+  --border-light: #f1f5f9;
   --text-primary: #032845;
   --text-secondary: #64748b;
   --text-muted: #94a3b8;
+  --shadow-color: rgba(3, 40, 69, 0.1);
   
   /* Sombras */
-  --shadow-sm: 0 1px 2px rgba(3, 40, 69, 0.05);
-  --shadow: 0 4px 6px -1px rgba(3, 40, 69, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(3, 40, 69, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(3, 40, 69, 0.1);
+  --shadow-sm: 0 1px 2px var(--shadow-color);
+  --shadow: 0 4px 6px -1px var(--shadow-color);
+  --shadow-lg: 0 10px 15px -3px var(--shadow-color);
+  --shadow-xl: 0 20px 25px -5px var(--shadow-color);
   
   /* Bordes */
   --radius: 12px;
@@ -39,15 +43,48 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* ============================================
+   MODO OSCURO
+   ============================================ */
+[data-theme="dark"] {
+  --bg-body: #032845;
+  --bg-card: #0A3D5C;
+  --bg-elevated: #0d4a6e;
+  --bg-input: #032845;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-light: rgba(255, 255, 255, 0.05);
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Auto dark mode basado en preferencia del sistema */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-body: #032845;
+    --bg-card: #0A3D5C;
+    --bg-elevated: #0d4a6e;
+    --bg-input: #032845;
+    --border: rgba(255, 255, 255, 0.1);
+    --border-light: rgba(255, 255, 255, 0.05);
+    --text-primary: #ffffff;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+  }
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--bg-light);
+  background: var(--bg-body);
   color: var(--text-primary);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 /* ============================================
@@ -75,6 +112,7 @@ body {
   overflow: hidden;
   box-shadow: var(--shadow-xl);
   animation: slideUp 0.4s ease-out;
+  border: 1px solid var(--border);
 }
 
 @keyframes slideUp {
@@ -95,6 +133,7 @@ body {
   border-radius: 20px;
   margin-bottom: 16px;
   box-shadow: var(--shadow-lg);
+  background: white;
 }
 
 .login-header h2 {
@@ -158,7 +197,7 @@ body {
 .input-group {
   display: flex;
   align-items: center;
-  background: var(--bg-light);
+  background: var(--bg-input);
   border: 2px solid var(--border);
   border-radius: var(--radius);
   padding: 0 16px;
@@ -256,6 +295,7 @@ body {
   justify-content: space-between;
   border-bottom: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
+  transition: background-color 0.3s;
 }
 
 .header-left {
@@ -269,6 +309,7 @@ body {
   height: 44px;
   border-radius: 12px;
   box-shadow: var(--shadow);
+  background: white;
 }
 
 .header-info {
@@ -299,7 +340,7 @@ body {
   width: 44px;
   height: 44px;
   border-radius: var(--radius);
-  background: var(--bg-light);
+  background: var(--bg-input);
   border: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -352,6 +393,29 @@ body {
 
 .header-avatar:hover {
   transform: scale(1.05);
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.theme-toggle:hover {
+  background: var(--border);
+}
+
+.theme-toggle .material-symbols-outlined {
+  font-size: 22px;
+  color: var(--text-primary);
 }
 
 /* User Menu */
@@ -431,7 +495,7 @@ body {
 }
 
 .user-menu-item:hover {
-  background: var(--bg-light);
+  background: var(--bg-input);
 }
 
 .user-menu-item .material-symbols-outlined {
@@ -497,6 +561,10 @@ body {
   outline: none;
 }
 
+.search-box input::placeholder {
+  color: var(--text-muted);
+}
+
 .filter-btn {
   width: 52px;
   height: 52px;
@@ -546,6 +614,7 @@ body {
 .filtros-header h3 {
   font-size: 1rem;
   font-weight: 700;
+  color: var(--text-primary);
 }
 
 .filtros-header button {
@@ -565,7 +634,7 @@ body {
 
 .chip {
   padding: 8px 16px;
-  background: var(--bg-light);
+  background: var(--bg-input);
   border: 2px solid var(--border);
   border-radius: var(--radius-full);
   font-size: 0.85rem;
@@ -653,7 +722,7 @@ body {
 .view-toggle {
   display: flex;
   gap: 4px;
-  background: var(--bg-light);
+  background: var(--bg-input);
   padding: 4px;
   border-radius: var(--radius);
 }
@@ -710,6 +779,7 @@ body {
   box-shadow: var(--shadow);
   cursor: pointer;
   transition: all 0.3s;
+  border: 1px solid var(--border);
 }
 
 .activity-card:hover {
@@ -722,6 +792,7 @@ body {
   height: 160px;
   background-size: cover;
   background-position: center;
+  background-color: var(--bg-input);
   position: relative;
 }
 
@@ -822,6 +893,11 @@ body {
 .category-name {
   font-size: 0.9rem;
   font-weight: 700;
+  color: var(--text-primary);
+}
+
+.category-card.active .category-name {
+  color: white;
 }
 
 .category-count {
@@ -855,6 +931,7 @@ body {
   transition: all 0.3s;
   display: flex;
   flex-direction: column;
+  border: 1px solid var(--border);
 }
 
 .activity-grid-card:hover {
@@ -871,6 +948,7 @@ body {
   height: 180px;
   background-size: cover;
   background-position: center;
+  background-color: var(--bg-input);
   position: relative;
 }
 
@@ -1000,6 +1078,7 @@ body {
 .empty-state h3 {
   font-size: 1.25rem;
   font-weight: 700;
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 
@@ -1009,68 +1088,96 @@ body {
 }
 
 /* ============================================
-   BOTTOM NAV
+   BOTTOM NAV - HOMOLOGADO CON INDEX
    ============================================ */
 .bottom-nav {
+  display: none;
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(3, 40, 69, 0.98);
   backdrop-filter: blur(20px);
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 12px 16px;
-  padding-bottom: calc(12px + var(--safe-bottom));
-  z-index: 100;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  z-index: 150;
+  padding: 8px 0;
+  padding-bottom: calc(8px + var(--safe-bottom));
 }
 
-.nav-item {
+.bottom-nav-container {
+  width: 100%;
+  padding: 0 8px;
+}
+
+#bottomNavGuest,
+#bottomNavUser {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+}
+
+.bottom-nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  padding: 8px 10px;
   color: var(--text-muted);
   text-decoration: none;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  transition: color 0.2s;
-  background: none;
+  transition: all 0.2s;
+  border-radius: 8px;
+  background: transparent;
   border: none;
   cursor: pointer;
-  padding: 0;
+  flex: 1;
+  max-width: 80px;
 }
 
-.nav-item .material-symbols-outlined {
-  font-size: 26px;
+.bottom-nav-item svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.5;
 }
 
-.nav-item.active {
+.bottom-nav-item.active,
+.bottom-nav-item:hover {
   color: var(--coaj-naranja);
 }
 
-.nav-center {
-  position: relative;
-  top: -20px;
-  width: 60px;
-  height: 60px;
-  background: linear-gradient(135deg, var(--coaj-naranja), var(--coaj-naranja-claro));
-  border-radius: 50%;
+.bottom-nav-item.active svg,
+.bottom-nav-item:hover svg {
+  stroke: var(--coaj-naranja);
+}
+
+.bottom-nav-user {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 20px rgba(232, 85, 42, 0.4);
-  border: 4px solid var(--bg-light);
+  gap: 4px;
+  padding: 8px 10px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  flex: 1;
+  max-width: 80px;
 }
 
-.nav-center .material-symbols-outlined {
-  font-size: 28px;
-  color: white;
+.bottom-nav-user .user-avatar {
+  width: 26px;
+  height: 26px;
+  font-size: 0.7rem;
 }
 
-.nav-center span:last-child { display: none; }
+/* Mostrar en móvil */
+@media (max-width: 768px) {
+  .bottom-nav {
+    display: block;
+  }
+}
 
 /* ============================================
    MODAL DETALLE
@@ -1100,6 +1207,8 @@ body {
   overflow-y: auto;
   position: relative;
   animation: slideUpModal 0.3s ease-out;
+  border: 1px solid var(--border);
+  border-bottom: none;
 }
 
 @keyframes slideUpModal {
@@ -1138,7 +1247,7 @@ body {
   height: 250px;
   background-size: cover;
   background-position: center;
-  background-color: var(--bg-light);
+  background-color: var(--bg-input);
 }
 
 .modal-content {
@@ -1172,9 +1281,10 @@ body {
 }
 
 .modal-info-item {
-  background: var(--bg-light);
+  background: var(--bg-input);
   padding: 16px;
   border-radius: var(--radius);
+  border: 1px solid var(--border);
 }
 
 .modal-info-item small {
@@ -1186,6 +1296,10 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   margin-bottom: 6px;
+}
+
+.modal-info-item small .material-symbols-outlined {
+  font-size: 16px;
 }
 
 .modal-info-item strong {
@@ -1227,7 +1341,7 @@ body {
 }
 
 .btn-secondary {
-  background: var(--bg-light);
+  background: var(--bg-input);
   color: var(--text-primary);
   border: 2px solid var(--border);
 }
@@ -1295,6 +1409,7 @@ body {
   .modal-card {
     border-radius: var(--radius-xl);
     max-height: 85vh;
+    border: 1px solid var(--border);
   }
   
   .modal-image {
@@ -1360,5 +1475,16 @@ body {
   
   .modal-actions {
     flex-direction: column;
+  }
+  
+  .bottom-nav-item {
+    padding: 6px 4px;
+    font-size: 0.6rem;
+    max-width: 65px;
+  }
+  
+  .bottom-nav-item svg {
+    width: 20px;
+    height: 20px;
   }
 }
