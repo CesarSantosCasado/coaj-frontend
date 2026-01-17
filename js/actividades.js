@@ -338,7 +338,7 @@ function renderizarProximas() {
 }
 
 // ============================================
-// RENDERIZADO - CATEGORÍAS
+// RENDERIZADO - CATEGORÍAS (Chips)
 // ============================================
 function renderizarCategorias() {
   const container = document.getElementById('categoriesGrid');
@@ -355,7 +355,7 @@ function renderizarCategorias() {
   const sorted = Object.entries(categorias).sort((a, b) => b[1] - a[1]);
   
   container.innerHTML = sorted.map(([cat, count]) => `
-    <button class="category-card" onclick="abrirModalCategoria('${cat}')">
+    <button class="category-chip" onclick="abrirModalCategoria('${cat}')">
       <span class="category-icon">${getIconoCategoria(cat)}</span>
       <span class="category-name">${cat}</span>
       <span class="category-count">${count}</span>
