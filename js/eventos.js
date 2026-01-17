@@ -1,24 +1,22 @@
 /**
  * COAJ MADRID - EVENTOS
- * Versión corregida con manejo de errores
+ * Con sesión compartida desde actividades
  */
 
 // ============================================
 // Verificar config.js
 // ============================================
 if (typeof COAJ_CONFIG === 'undefined') {
-  console.error('❌ COAJ_CONFIG no definido. Verifica que config.js cargue primero.');
-  alert('Error: config.js no cargado');
+  console.error('❌ COAJ_CONFIG no definido');
 }
 
 // ============================================
-// Configuración con valores por defecto
+// Configuración
 // ============================================
 const API_BASE = COAJ_CONFIG?.api?.base || '';
 const CACHE_KEY = COAJ_CONFIG?.cache?.eventosKey || 'coaj_eventos_cache';
 const CACHE_TTL = COAJ_CONFIG?.cache?.ttl || 300000;
 
-// Iconos con fallback
 const ICONOS = COAJ_CONFIG?.eventos?.icons || {
   'Formación': '📚',
   'Cultura': '🎭',
@@ -31,26 +29,20 @@ const ICONOS = COAJ_CONFIG?.eventos?.icons || {
   'default': '📅'
 };
 
-// Verificar CoajCache
+// CoajCache fallback
 if (typeof CoajCache === 'undefined') {
-  console.warn('⚠️ CoajCache no definido, creando versión básica');
   window.CoajCache = {
     get: (key) => {
       try {
         const item = localStorage.getItem(key);
         if (!item) return null;
         const parsed = JSON.parse(item);
-        if (Date.now() > parsed.expiry) {
-          localStorage.removeItem(key);
-          return null;
-        }
+        if (Date.now() > parsed.expiry) { localStorage.removeItem(key); return null; }
         return parsed.data;
       } catch { return null; }
     },
     set: (key, data, ttl = 300000) => {
-      try {
-        localStorage.setItem(key, JSON.stringify({ data, expiry: Date.now() + ttl }));
-      } catch (e) { console.warn('Cache write error:', e); }
+      try { localStorage.setItem(key, JSON.stringify({ data, expiry: Date.now() + ttl })); } catch {}
     },
     remove: (key) => localStorage.removeItem(key)
   };
@@ -71,18 +63,183 @@ const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Ju
 const diasSemana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 // ============================================
-// CARGAR EVENTOS
+// SESIÓN (compartida con actividades)
 // ============================================
-async function cargarEventos(forceRefresh = false) {
-  console.log('📅 cargarEventos() - forceRefresh:', forceRefresh);
+function verificarSesion() {
+  const sesion = localStorage.getItem('coaj_sesion');
+  console.log('🔐 Verificando sesión:', sesion ? 'encontrada' : 'no encontrada');
   
-  if (!API_BASE) {
-    console.error('❌ API_BASE no configurado');
-    mostrarToast('Error: API no configurada', 'error');
+  if (sesion) {
+    try {
+      const usuario = JSON.parse(sesion);
+      actualizarUIUsuario(usuario);
+      ocultarLoginModal();
+      cargarEventos();
+    } catch (e) {
+      console.error('Error parseando sesión:', e);
+      mostrarLoginModal();
+    }
+  } else {
+    mostrarLoginModal();
+  }
+}
+
+function actualizarUIUsuario(usuario) {
+  const nombre = usuario.nombre || usuario.alias || 'Usuario';
+  const inicial = nombre.charAt(0).toUpperCase();
+  
+  const headerGreeting = document.getElementById('headerGreeting');
+  const avatarInitial = document.getElementById('avatarInitial');
+  const menuAvatarInitial = document.getElementById('menuAvatarInitial');
+  const menuUserName = document.getElementById('menuUserName');
+  const bottomNavGuest = document.getElementById('bottomNavGuest');
+  const bottomNavUser = document.getElementById('bottomNavUser');
+  
+  if (headerGreeting) headerGreeting.textContent = `Hola, ${nombre}`;
+  if (avatarInitial) avatarInitial.textContent = inicial;
+  if (menuAvatarInitial) menuAvatarInitial.textContent = inicial;
+  if (menuUserName) menuUserName.textContent = nombre;
+  if (bottomNavGuest) bottomNavGuest.style.display = 'none';
+  if (bottomNavUser) bottomNavUser.style.display = 'flex';
+}
+
+function entrarComoInvitado() {
+  const invitado = { tipo: 'invitado', nombre: 'Invitado' };
+  localStorage.setItem('coaj_sesion', JSON.stringify(invitado));
+  actualizarUIUsuario(invitado);
+  ocultarLoginModal();
+  cargarEventos();
+}
+
+async function iniciarSesion(e) {
+  e.preventDefault();
+  
+  const aliasEl = document.getElementById('alias');
+  const contrasenaEl = document.getElementById('contrasena');
+  const errorEl = document.getElementById('loginError');
+  const btnLogin = document.querySelector('.btn-login');
+  
+  const alias = aliasEl?.value?.trim();
+  const contrasena = contrasenaEl?.value;
+  
+  if (!alias || !contrasena) {
+    if (errorEl) { errorEl.textContent = 'Completa todos los campos'; errorEl.style.display = 'block'; }
     return;
   }
   
-  // Cache
+  if (btnLogin) { btnLogin.disabled = true; btnLogin.innerHTML = '⏳ Verificando...'; }
+  
+  try {
+    const response = await fetch(`${API_BASE}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alias, contrasena })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success && data.usuario) {
+      localStorage.setItem('coaj_sesion', JSON.stringify(data.usuario));
+      actualizarUIUsuario(data.usuario);
+      ocultarLoginModal();
+      cargarEventos();
+      mostrarToast(`Bienvenido, ${data.usuario.nombre || alias}`, 'success');
+    } else {
+      if (errorEl) { errorEl.textContent = data.error || 'Credenciales incorrectas'; errorEl.style.display = 'block'; }
+    }
+  } catch (error) {
+    console.error('Error login:', error);
+    if (errorEl) { errorEl.textContent = 'Error de conexión'; errorEl.style.display = 'block'; }
+  } finally {
+    if (btnLogin) { btnLogin.disabled = false; btnLogin.innerHTML = '🔐 Iniciar Sesión'; }
+  }
+}
+
+function cerrarSesion() {
+  localStorage.removeItem('coaj_sesion');
+  
+  const bottomNavGuest = document.getElementById('bottomNavGuest');
+  const bottomNavUser = document.getElementById('bottomNavUser');
+  const headerGreeting = document.getElementById('headerGreeting');
+  const avatarInitial = document.getElementById('avatarInitial');
+  
+  if (bottomNavGuest) bottomNavGuest.style.display = 'flex';
+  if (bottomNavUser) bottomNavUser.style.display = 'none';
+  if (headerGreeting) headerGreeting.textContent = 'Bienvenido';
+  if (avatarInitial) avatarInitial.textContent = 'U';
+  
+  cerrarUserMenu();
+  mostrarLoginModal();
+}
+
+function mostrarLoginModal() {
+  const modal = document.getElementById('loginModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function ocultarLoginModal() {
+  const modal = document.getElementById('loginModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+// ============================================
+// USER MENU
+// ============================================
+function toggleUserMenu() {
+  const menu = document.getElementById('userMenu');
+  if (menu) menu.classList.toggle('active');
+}
+
+function cerrarUserMenu() {
+  const menu = document.getElementById('userMenu');
+  if (menu) menu.classList.remove('active');
+}
+
+// ============================================
+// TEMA
+// ============================================
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'light';
+  const next = current === 'light' ? 'dark' : 'light';
+  
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('coaj_theme', next);
+  
+  const icon = next === 'dark' ? 'light_mode' : 'dark_mode';
+  const text = next === 'dark' ? 'Modo Claro' : 'Modo Oscuro';
+  
+  const themeIcon = document.getElementById('themeIcon');
+  const menuThemeIcon = document.getElementById('menuThemeIcon');
+  const menuThemeText = document.getElementById('menuThemeText');
+  
+  if (themeIcon) themeIcon.textContent = icon;
+  if (menuThemeIcon) menuThemeIcon.textContent = icon;
+  if (menuThemeText) menuThemeText.textContent = text;
+}
+
+function cargarTema() {
+  const tema = localStorage.getItem('coaj_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', tema);
+  
+  const icon = tema === 'dark' ? 'light_mode' : 'dark_mode';
+  const text = tema === 'dark' ? 'Modo Claro' : 'Modo Oscuro';
+  
+  const themeIcon = document.getElementById('themeIcon');
+  const menuThemeIcon = document.getElementById('menuThemeIcon');
+  const menuThemeText = document.getElementById('menuThemeText');
+  
+  if (themeIcon) themeIcon.textContent = icon;
+  if (menuThemeIcon) menuThemeIcon.textContent = icon;
+  if (menuThemeText) menuThemeText.textContent = text;
+}
+
+// ============================================
+// CARGAR EVENTOS
+// ============================================
+async function cargarEventos(forceRefresh = false) {
+  console.log('📅 cargarEventos()', forceRefresh ? '(forzado)' : '');
+  
   if (!forceRefresh) {
     const cached = CoajCache.get(CACHE_KEY);
     if (cached) {
@@ -96,59 +253,37 @@ async function cargarEventos(forceRefresh = false) {
     }
   }
   
-  // Loading
-  const loadingEl = document.getElementById('loading');
-  const emptyEl = document.getElementById('empty');
-  
-  if (loadingEl) loadingEl.style.display = 'block';
-  if (emptyEl) emptyEl.style.display = 'none';
-  
-  const vistaTarjetas = document.getElementById('vistaTarjetas');
-  const vistaCalendario = document.getElementById('vistaCalendario');
-  if (vistaTarjetas) vistaTarjetas.innerHTML = '';
-  if (vistaCalendario) vistaCalendario.innerHTML = '';
+  mostrarLoading(true);
   
   try {
-    console.log('🌐 Fetch:', `${API_BASE}/eventos`);
     const response = await fetch(`${API_BASE}/eventos`);
-    
-    console.log('📡 Status:', response.status);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     
     const data = await response.json();
-    console.log('📦 Data recibida:', data);
     
     if (data.eventos && Array.isArray(data.eventos)) {
       eventos = filtrarEventosFinalizados(data.eventos);
       eventos = ordenarEventosPorFecha(eventos);
-      
-      console.log(`✅ ${eventos.length} eventos procesados`);
+      console.log(`✅ ${eventos.length} eventos`);
       
       CoajCache.set(CACHE_KEY, eventos, CACHE_TTL);
-      
       generarFiltros(eventos);
       generarFiltrosCentros(eventos);
       render(eventos);
       actualizarFecha();
     } else {
-      console.warn('⚠️ Sin eventos en respuesta:', data);
       eventos = [];
       render(eventos);
     }
-    
   } catch (error) {
-    console.error('❌ Error cargando eventos:', error);
-    if (loadingEl) loadingEl.style.display = 'none';
-    if (emptyEl) emptyEl.style.display = 'block';
-    mostrarToast(`Error: ${error.message}`, 'error');
+    console.error('❌ Error:', error);
+    mostrarLoading(false);
+    mostrarEmpty(true);
+    mostrarToast('Error al cargar eventos', 'error');
   }
 }
 
 function refrescarEventos() {
-  console.log('🔄 Refrescando...');
   CoajCache.remove(CACHE_KEY);
   categoriaActual = 'todas';
   centroActual = 'todos';
@@ -156,38 +291,46 @@ function refrescarEventos() {
   mostrarToast('Actualizando...', 'success');
 }
 
+function mostrarLoading(show) {
+  const el = document.getElementById('loading');
+  if (el) el.style.display = show ? 'block' : 'none';
+}
+
+function mostrarEmpty(show) {
+  const el = document.getElementById('empty');
+  if (el) el.style.display = show ? 'block' : 'none';
+}
+
 // ============================================
-// FILTRAR Y ORDENAR
+// UTILIDADES FECHA
 // ============================================
 function filtrarEventosFinalizados(evts) {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
-  
   return evts.filter(ev => {
     const fechaFin = parsearFecha(ev["Fecha finalización"]) || parsearFecha(ev["Fecha inicio"]);
     if (!fechaFin) return true;
-    const diffDias = Math.floor((hoy - fechaFin) / (1000 * 60 * 60 * 24));
-    return diffDias <= 5;
+    return Math.floor((hoy - fechaFin) / 86400000) <= 5;
   });
 }
 
 function ordenarEventosPorFecha(evts) {
   return evts.sort((a, b) => {
-    const fechaA = parsearFecha(a["Fecha inicio"]) || new Date(0);
-    const fechaB = parsearFecha(b["Fecha inicio"]) || new Date(0);
-    return fechaB - fechaA;
+    const fA = parsearFecha(a["Fecha inicio"]) || new Date(0);
+    const fB = parsearFecha(b["Fecha inicio"]) || new Date(0);
+    return fB - fA;
   });
 }
 
-function parsearFecha(fechaStr) {
-  if (!fechaStr) return null;
+function parsearFecha(str) {
+  if (!str) return null;
   try {
-    if (typeof fechaStr === 'string' && fechaStr.includes('/')) {
-      const partes = fechaStr.split(' ')[0].split('/');
-      return new Date(parseInt(partes[2]), parseInt(partes[0]) - 1, parseInt(partes[1]));
+    if (str.includes('/')) {
+      const p = str.split(' ')[0].split('/');
+      return new Date(+p[2], +p[0] - 1, +p[1]);
     }
-    const fecha = new Date(fechaStr);
-    return isNaN(fecha.getTime()) ? null : fecha;
+    const d = new Date(str);
+    return isNaN(d) ? null : d;
   } catch { return null; }
 }
 
@@ -195,15 +338,12 @@ function formatearFecha(str) {
   if (!str) return 'Por confirmar';
   try {
     if (str.includes('/')) {
-      const partes = str.split(' ');
-      const fecha = partes[0].split('/');
-      const fechaObj = new Date(parseInt(fecha[2]), parseInt(fecha[0]) - 1, parseInt(fecha[1]));
-      let resultado = fechaObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-      if (partes[1]) {
-        const hora = partes[1].split(':');
-        resultado += ' • ' + hora[0] + ':' + hora[1];
-      }
-      return resultado;
+      const p = str.split(' ');
+      const f = p[0].split('/');
+      const d = new Date(+f[2], +f[0] - 1, +f[1]);
+      let r = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+      if (p[1]) r += ' • ' + p[1].substring(0, 5);
+      return r;
     }
     return str;
   } catch { return str; }
@@ -213,43 +353,38 @@ function formatearFechaCorta(str) {
   if (!str) return 'Por confirmar';
   try {
     if (str.includes('/')) {
-      const fecha = str.split(' ')[0].split('/');
-      const fechaObj = new Date(2024, parseInt(fecha[0]) - 1, parseInt(fecha[1]));
-      return fechaObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+      const f = str.split(' ')[0].split('/');
+      return new Date(2024, +f[0] - 1, +f[1]).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
     }
     return str;
   } catch { return str; }
 }
 
 function calcularEstado(ev) {
-  const fechaInicio = parsearFecha(ev["Fecha inicio"]);
-  const fechaFin = parsearFecha(ev["Fecha finalización"]);
-  if (!fechaInicio) return null;
+  const inicio = parsearFecha(ev["Fecha inicio"]);
+  const fin = parsearFecha(ev["Fecha finalización"]);
+  if (!inicio) return null;
   
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   
-  const inicio = new Date(fechaInicio);
-  inicio.setHours(0, 0, 0, 0);
+  const i = new Date(inicio); i.setHours(0, 0, 0, 0);
+  const f = fin ? new Date(fin) : new Date(i); f.setHours(0, 0, 0, 0);
   
-  const fin = fechaFin ? new Date(fechaFin) : new Date(inicio);
-  fin.setHours(0, 0, 0, 0);
+  const diffI = Math.floor((i - hoy) / 86400000);
+  const diffF = Math.floor((f - hoy) / 86400000);
   
-  const diffInicio = Math.floor((inicio - hoy) / (1000 * 60 * 60 * 24));
-  const diffFin = Math.floor((fin - hoy) / (1000 * 60 * 60 * 24));
-  
-  if (diffInicio > 5) return 'Programado';
-  if (diffInicio <= 5 && diffFin >= 0) return 'Desarrollo';
-  if (diffFin < 0) return 'Finalizado';
+  if (diffI > 5) return 'Programado';
+  if (diffI <= 5 && diffF >= 0) return 'Desarrollo';
+  if (diffF < 0) return 'Finalizado';
   return 'Programado';
 }
 
 function extraerImg(url) {
   if (!url) return null;
   if (url.includes('gettablefileurl')) {
-    const params = new URLSearchParams(url.split('?')[1] || '');
-    const fileName = params.get('fileName');
-    if (!fileName || !fileName.trim()) return null;
+    const p = new URLSearchParams(url.split('?')[1] || '');
+    if (!p.get('fileName')?.trim()) return null;
   }
   return url;
 }
@@ -258,104 +393,85 @@ function extraerImg(url) {
 // FILTROS
 // ============================================
 function agrupar(evts) {
-  const grupos = {};
+  const g = {};
   evts.forEach(ev => {
-    const cat = ev.Categoría || ev.Categoria || 'Sin Categoría';
-    if (!grupos[cat]) grupos[cat] = [];
-    grupos[cat].push(ev);
+    const c = ev.Categoría || ev.Categoria || 'Sin Categoría';
+    if (!g[c]) g[c] = [];
+    g[c].push(ev);
   });
-  return grupos;
+  return g;
 }
 
 function filtrarEventos(evts) {
-  let resultado = evts;
-  
+  let r = evts;
   if (categoriaActual !== 'todas') {
-    resultado = resultado.filter(ev => {
-      const cat = ev.Categoría || ev.Categoria || 'Sin Categoría';
-      return cat === categoriaActual;
-    });
+    r = r.filter(ev => (ev.Categoría || ev.Categoria || 'Sin Categoría') === categoriaActual);
   }
-  
   if (centroActual !== 'todos') {
-    resultado = resultado.filter(ev => ev["Centro Juvenil"] === centroActual);
+    r = r.filter(ev => ev["Centro Juvenil"] === centroActual);
   }
-  
-  return resultado;
+  return r;
 }
 
 function generarFiltros(evts) {
-  const container = document.getElementById('filtros');
-  if (!container) {
-    console.warn('⚠️ #filtros no encontrado');
-    return;
-  }
-  container.innerHTML = '';
+  const c = document.getElementById('filtros');
+  if (!c) return;
+  c.innerHTML = '';
   
-  const btnTodas = document.createElement('button');
-  btnTodas.className = 'filtro-btn active';
-  btnTodas.setAttribute('data-categoria', 'todas');
-  btnTodas.innerHTML = `📌 Todas (${evts.length})`;
-  btnTodas.onclick = () => filtrarCategoria('todas');
-  container.appendChild(btnTodas);
+  const btn = document.createElement('button');
+  btn.className = 'filtro-btn active';
+  btn.setAttribute('data-categoria', 'todas');
+  btn.innerHTML = `📌 Todas (${evts.length})`;
+  btn.onclick = () => filtrarCategoria('todas');
+  c.appendChild(btn);
   
-  const grupos = agrupar(evts);
-  Object.keys(grupos).sort().forEach(cat => {
-    const icono = ICONOS[cat] || ICONOS.default;
-    const btn = document.createElement('button');
-    btn.className = 'filtro-btn';
-    btn.setAttribute('data-categoria', cat);
-    btn.innerHTML = `${icono} ${cat} (${grupos[cat].length})`;
-    btn.onclick = () => filtrarCategoria(cat);
-    container.appendChild(btn);
+  const g = agrupar(evts);
+  Object.keys(g).sort().forEach(cat => {
+    const b = document.createElement('button');
+    b.className = 'filtro-btn';
+    b.setAttribute('data-categoria', cat);
+    b.innerHTML = `${ICONOS[cat] || ICONOS.default} ${cat} (${g[cat].length})`;
+    b.onclick = () => filtrarCategoria(cat);
+    c.appendChild(b);
   });
 }
 
 function generarFiltrosCentros(evts) {
-  const container = document.getElementById('filtrosCentros');
-  if (!container) {
-    console.warn('⚠️ #filtrosCentros no encontrado');
-    return;
-  }
-  container.innerHTML = '';
+  const c = document.getElementById('filtrosCentros');
+  if (!c) return;
+  c.innerHTML = '';
   
-  const centrosSet = new Set();
+  const set = new Set();
   evts.forEach(ev => {
     const centro = ev["Centro Juvenil"];
-    if (centro && centro.trim()) centrosSet.add(centro.trim());
+    if (centro?.trim()) set.add(centro.trim());
   });
   
-  const centros = Array.from(centrosSet).sort();
+  if (set.size === 0) { c.style.display = 'none'; return; }
+  c.style.display = 'flex';
   
-  if (centros.length === 0) {
-    container.style.display = 'none';
-    return;
-  }
+  const btn = document.createElement('button');
+  btn.className = 'filtro-centro-btn active';
+  btn.setAttribute('data-centro', 'todos');
+  btn.innerHTML = `🏢 Todos (${evts.length})`;
+  btn.onclick = () => filtrarCentro('todos');
+  c.appendChild(btn);
   
-  container.style.display = 'flex';
-  
-  const btnTodos = document.createElement('button');
-  btnTodos.className = 'filtro-centro-btn active';
-  btnTodos.setAttribute('data-centro', 'todos');
-  btnTodos.innerHTML = `🏢 Todos (${evts.length})`;
-  btnTodos.onclick = () => filtrarCentro('todos');
-  container.appendChild(btnTodos);
-  
-  centros.forEach(centro => {
+  Array.from(set).sort().forEach(centro => {
     const count = evts.filter(ev => ev["Centro Juvenil"] === centro).length;
-    const btn = document.createElement('button');
-    btn.className = 'filtro-centro-btn';
-    btn.setAttribute('data-centro', centro);
-    btn.innerHTML = `📍 ${centro} (${count})`;
-    btn.onclick = () => filtrarCentro(centro);
-    container.appendChild(btn);
+    const b = document.createElement('button');
+    b.className = 'filtro-centro-btn';
+    b.setAttribute('data-centro', centro);
+    b.innerHTML = `📍 ${centro} (${count})`;
+    b.onclick = () => filtrarCentro(centro);
+    c.appendChild(b);
   });
 }
 
-function filtrarCategoria(categoria) {
-  categoriaActual = categoria;
-  document.querySelectorAll('.filtro-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-categoria') === categoria);
+function filtrarCategoria(cat) {
+  categoriaActual = cat;
+  document.querySelectorAll('.filtro-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-categoria') === cat);
   });
   cerrarEventosDia();
   render(eventos);
@@ -363,117 +479,91 @@ function filtrarCategoria(categoria) {
 
 function filtrarCentro(centro) {
   centroActual = centro;
-  document.querySelectorAll('.filtro-centro-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-centro') === centro);
+  document.querySelectorAll('.filtro-centro-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-centro') === centro);
   });
   cerrarEventosDia();
   render(eventos);
 }
 
 // ============================================
-// RENDERIZAR
+// RENDER
 // ============================================
 function render(evts) {
-  const loading = document.getElementById('loading');
-  const empty = document.getElementById('empty');
-  const eventosFiltrados = filtrarEventos(evts);
-
-  if (!eventosFiltrados || eventosFiltrados.length === 0) {
-    if (loading) loading.style.display = 'none';
-    if (empty) empty.style.display = 'block';
+  const filtered = filtrarEventos(evts);
+  
+  if (!filtered.length) {
+    mostrarLoading(false);
+    mostrarEmpty(true);
     const vt = document.getElementById('vistaTarjetas');
     const vc = document.getElementById('vistaCalendario');
     if (vt) vt.innerHTML = '';
     if (vc) vc.innerHTML = '';
     return;
   }
-
-  if (loading) loading.style.display = 'none';
-  if (empty) empty.style.display = 'none';
   
-  if (vistaActual === 'tarjetas') {
-    renderTarjetas(eventosFiltrados);
-  } else {
-    renderCalendario(evts);
-  }
+  mostrarLoading(false);
+  mostrarEmpty(false);
+  
+  if (vistaActual === 'tarjetas') renderTarjetas(filtered);
+  else renderCalendario(evts);
 }
 
 function crearCard(ev) {
   const nombre = ev.Evento || ev["ID Eventos"] || 'Sin nombre';
   const fecha = formatearFechaCorta(ev["Fecha inicio"]);
   const centro = ev["Centro Juvenil"] || 'Sin centro';
-  const estado = calcularEstado(ev) || '';
-  const imgUrl = extraerImg(ev["Imagen URL"]) || extraerImg(ev.Cartel);
-  const img = imgUrl || 'https://placehold.co/600x400/032845/ffffff?text=COAJ';
+  const estado = calcularEstado(ev);
+  const img = extraerImg(ev["Imagen URL"]) || extraerImg(ev.Cartel) || 'https://placehold.co/600x400/032845/ffffff?text=COAJ';
 
-  let badgeHtml = '';
-  if (estado === 'Desarrollo') badgeHtml = '<span class="badge badge-desarrollo">En curso</span>';
-  else if (estado === 'Finalizado') badgeHtml = '<span class="badge badge-finalizado">Finalizado</span>';
-  else if (estado === 'Programado') badgeHtml = '<span class="badge badge-programado">Próximo</span>';
+  let badge = '';
+  if (estado === 'Desarrollo') badge = '<span class="badge badge-desarrollo">En curso</span>';
+  else if (estado === 'Finalizado') badge = '<span class="badge badge-finalizado">Finalizado</span>';
+  else if (estado === 'Programado') badge = '<span class="badge badge-programado">Próximo</span>';
 
   const card = document.createElement('div');
   card.className = 'evento-card';
-  
   card.innerHTML = `
     <img class="evento-img" src="${img}" alt="${nombre}" onerror="this.src='https://placehold.co/600x400/032845/ffffff?text=COAJ'">
     <div class="evento-content">
       <div class="evento-nombre">${nombre}</div>
       <div class="evento-info">
-        ${badgeHtml}
-        <div class="info-item">
-          <div class="info-icon">📅</div>
-          <div class="info-text">${fecha}</div>
-        </div>
-        <div class="info-item">
-          <div class="info-icon">🏢</div>
-          <div class="info-text">${centro}</div>
-        </div>
+        ${badge}
+        <div class="info-item"><div class="info-icon">📅</div><div class="info-text">${fecha}</div></div>
+        <div class="info-item"><div class="info-icon">🏢</div><div class="info-text">${centro}</div></div>
       </div>
       <button class="btn-ver-mas">Ver más</button>
     </div>
   `;
-  
   card.querySelector('.btn-ver-mas').onclick = () => abrirModal(ev);
-  
   return card;
 }
 
 function renderTarjetas(evts) {
-  const container = document.getElementById('vistaTarjetas');
-  if (!container) return;
-  container.innerHTML = '';
+  const c = document.getElementById('vistaTarjetas');
+  if (!c) return;
+  c.innerHTML = '';
   
-  const grupos = agrupar(evts);
+  const g = agrupar(evts);
   
   if (categoriaActual !== 'todas') {
-    const items = grupos[categoriaActual] || [];
-    if (items.length === 0) return;
-    
+    const items = g[categoriaActual] || [];
     const grid = document.createElement('div');
     grid.className = 'eventos-grid';
-    items.forEach(item => grid.appendChild(crearCard(item)));
-    container.appendChild(grid);
+    items.forEach(i => grid.appendChild(crearCard(i)));
+    c.appendChild(grid);
   } else {
-    Object.keys(grupos).sort().forEach(cat => {
-      const items = grupos[cat];
-      const icono = ICONOS[cat] || ICONOS.default;
-
+    Object.keys(g).sort().forEach(cat => {
+      const items = g[cat];
       const banner = document.createElement('div');
       banner.className = 'category-banner';
-      banner.innerHTML = `
-        <div class="category-content">
-          <div class="category-info">
-            <div class="category-icon">${icono}</div>
-            <div class="category-title">${cat}</div>
-          </div>
-          <div class="category-count">${items.length}</div>
-        </div>`;
-      container.appendChild(banner);
-
+      banner.innerHTML = `<div class="category-content"><div class="category-info"><div class="category-icon">${ICONOS[cat] || ICONOS.default}</div><div class="category-title">${cat}</div></div><div class="category-count">${items.length}</div></div>`;
+      c.appendChild(banner);
+      
       const grid = document.createElement('div');
       grid.className = 'eventos-grid';
-      items.forEach(item => grid.appendChild(crearCard(item)));
-      container.appendChild(grid);
+      items.forEach(i => grid.appendChild(crearCard(i)));
+      c.appendChild(grid);
     });
   }
 }
@@ -482,141 +572,110 @@ function renderTarjetas(evts) {
 // CALENDARIO
 // ============================================
 function renderCalendario(evts) {
-  const container = document.getElementById('vistaCalendario');
-  if (!container) return;
-  container.innerHTML = generarCalendario(evts);
+  const c = document.getElementById('vistaCalendario');
+  if (c) c.innerHTML = generarCalendario(evts);
 }
 
 function generarCalendario(evts) {
-  const evsFiltrados = filtrarEventos(evts);
-  const primerDia = new Date(añoActual, mesActual, 1);
-  const ultimoDia = new Date(añoActual, mesActual + 1, 0);
-  const diasEnMes = ultimoDia.getDate();
-  const primerDiaSemana = (primerDia.getDay() + 6) % 7;
+  const filtered = filtrarEventos(evts);
+  const primer = new Date(añoActual, mesActual, 1);
+  const ultimo = new Date(añoActual, mesActual + 1, 0);
+  const dias = ultimo.getDate();
+  const primerDia = (primer.getDay() + 6) % 7;
   const hoy = new Date();
   
-  let html = `
-    <div class="calendario-container">
-      <div class="calendario-header">
-        <div class="calendario-nav">
-          <button class="btn-nav" onclick="cambiarMes(-1)">←</button>
-          <div class="mes-actual">${mesesNombres[mesActual]} ${añoActual}</div>
-          <button class="btn-nav" onclick="cambiarMes(1)">→</button>
-        </div>
-        <button class="btn-hoy" onclick="irHoy()">Hoy</button>
+  let html = `<div class="calendario-container">
+    <div class="calendario-header">
+      <div class="calendario-nav">
+        <button class="btn-nav" onclick="cambiarMes(-1)">←</button>
+        <div class="mes-actual">${mesesNombres[mesActual]} ${añoActual}</div>
+        <button class="btn-nav" onclick="cambiarMes(1)">→</button>
       </div>
-      <div class="calendario-grid">
-  `;
+      <button class="btn-hoy" onclick="irHoy()">Hoy</button>
+    </div>
+    <div class="calendario-grid">`;
   
   diasSemana.forEach(d => html += `<div class="dia-semana">${d}</div>`);
   
-  for (let i = 0; i < primerDiaSemana; i++) {
-    const diaAnterior = new Date(añoActual, mesActual, -(primerDiaSemana - i - 1));
-    html += `<div class="dia-celda otro-mes"><div class="dia-numero">${diaAnterior.getDate()}</div></div>`;
+  for (let i = 0; i < primerDia; i++) {
+    const d = new Date(añoActual, mesActual, -(primerDia - i - 1));
+    html += `<div class="dia-celda otro-mes"><div class="dia-numero">${d.getDate()}</div></div>`;
   }
   
-  for (let dia = 1; dia <= diasEnMes; dia++) {
-    const eventosDia = evsFiltrados.filter(ev => {
-      const fechaInicio = parsearFecha(ev["Fecha inicio"]);
-      const fechaFin = parsearFecha(ev["Fecha finalización"]);
-      if (!fechaInicio) return false;
-      
-      const fechaDia = new Date(añoActual, mesActual, dia);
-      fechaDia.setHours(0,0,0,0);
-      
-      const inicio = new Date(fechaInicio);
-      inicio.setHours(0,0,0,0);
-      
-      if (fechaFin) {
-        const fin = new Date(fechaFin);
-        fin.setHours(0,0,0,0);
-        return fechaDia >= inicio && fechaDia <= fin;
-      }
-      return fechaDia.getTime() === inicio.getTime();
+  for (let dia = 1; dia <= dias; dia++) {
+    const evsDia = filtered.filter(ev => {
+      const fi = parsearFecha(ev["Fecha inicio"]);
+      const ff = parsearFecha(ev["Fecha finalización"]);
+      if (!fi) return false;
+      const fd = new Date(añoActual, mesActual, dia); fd.setHours(0,0,0,0);
+      const i = new Date(fi); i.setHours(0,0,0,0);
+      if (ff) { const f = new Date(ff); f.setHours(0,0,0,0); return fd >= i && fd <= f; }
+      return fd.getTime() === i.getTime();
     });
     
-    let clases = 'dia-celda';
-    if (hoy.getDate() === dia && hoy.getMonth() === mesActual && hoy.getFullYear() === añoActual) clases += ' hoy';
-    if (eventosDia.length > 0) clases += ' con-eventos';
+    let cls = 'dia-celda';
+    if (hoy.getDate() === dia && hoy.getMonth() === mesActual && hoy.getFullYear() === añoActual) cls += ' hoy';
+    if (evsDia.length) cls += ' con-eventos';
     
-    html += `
-      <div class="${clases}" onclick="verEventosDia(${dia})">
-        <div class="dia-numero">${dia}</div>
-        ${eventosDia.length > 0 ? `<div class="dia-contador">${eventosDia.length}</div>` : ''}
-      </div>
-    `;
+    html += `<div class="${cls}" onclick="verEventosDia(${dia})">
+      <div class="dia-numero">${dia}</div>
+      ${evsDia.length ? `<div class="dia-contador">${evsDia.length}</div>` : ''}
+    </div>`;
   }
   
-  const diasRestantes = (7 - ((primerDiaSemana + diasEnMes) % 7)) % 7;
-  for (let i = 1; i <= diasRestantes; i++) {
+  const rest = (7 - ((primerDia + dias) % 7)) % 7;
+  for (let i = 1; i <= rest; i++) {
     html += `<div class="dia-celda otro-mes"><div class="dia-numero">${i}</div></div>`;
   }
   
-  html += '</div></div>';
-  return html;
+  return html + '</div></div>';
 }
 
 function verEventosDia(dia) {
   diaSeleccionado = dia;
-  const evsFiltrados = filtrarEventos(eventos);
+  const filtered = filtrarEventos(eventos);
   
-  const eventosDia = evsFiltrados.filter(ev => {
-    const fechaInicio = parsearFecha(ev["Fecha inicio"]);
-    const fechaFin = parsearFecha(ev["Fecha finalización"]);
-    if (!fechaInicio) return false;
-    
-    const fechaDia = new Date(añoActual, mesActual, dia);
-    fechaDia.setHours(0,0,0,0);
-    
-    const inicio = new Date(fechaInicio);
-    inicio.setHours(0,0,0,0);
-    
-    if (fechaFin) {
-      const fin = new Date(fechaFin);
-      fin.setHours(0,0,0,0);
-      return fechaDia >= inicio && fechaDia <= fin;
-    }
-    return fechaDia.getTime() === inicio.getTime();
+  const evsDia = filtered.filter(ev => {
+    const fi = parsearFecha(ev["Fecha inicio"]);
+    const ff = parsearFecha(ev["Fecha finalización"]);
+    if (!fi) return false;
+    const fd = new Date(añoActual, mesActual, dia); fd.setHours(0,0,0,0);
+    const i = new Date(fi); i.setHours(0,0,0,0);
+    if (ff) { const f = new Date(ff); f.setHours(0,0,0,0); return fd >= i && fd <= f; }
+    return fd.getTime() === i.getTime();
   });
   
-  if (eventosDia.length === 0) return;
+  if (!evsDia.length) return;
   
-  const container = document.getElementById('vistaCalendario');
-  const existente = document.getElementById('eventosDia');
-  if (existente) existente.remove();
+  const c = document.getElementById('vistaCalendario');
+  document.getElementById('eventosDia')?.remove();
   
-  const fecha = new Date(añoActual, mesActual, dia);
-  const fechaFormateada = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  const fecha = new Date(añoActual, mesActual, dia).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
   
   const div = document.createElement('div');
   div.className = 'eventos-dia-container';
   div.id = 'eventosDia';
   div.innerHTML = `
     <div class="eventos-dia-header">
-      <div class="eventos-dia-titulo">📅 ${fechaFormateada} (${eventosDia.length})</div>
+      <div class="eventos-dia-titulo">📅 ${fecha} (${evsDia.length})</div>
       <button class="btn-cerrar-dia" onclick="cerrarEventosDia()">✕</button>
     </div>
-    <div class="eventos-dia-body">
-      <div class="eventos-grid" id="gridEventosDia"></div>
-    </div>
+    <div class="eventos-dia-body"><div class="eventos-grid" id="gridEventosDia"></div></div>
   `;
-  
-  container.appendChild(div);
+  c.appendChild(div);
   
   const grid = document.getElementById('gridEventosDia');
-  eventosDia.forEach(ev => grid.appendChild(crearCard(ev)));
-  
-  div.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  evsDia.forEach(ev => grid.appendChild(crearCard(ev)));
+  div.scrollIntoView({ behavior: 'smooth' });
 }
 
 function cerrarEventosDia() {
-  const div = document.getElementById('eventosDia');
-  if (div) div.remove();
+  document.getElementById('eventosDia')?.remove();
   diaSeleccionado = null;
 }
 
-function cambiarMes(direccion) {
-  mesActual += direccion;
+function cambiarMes(dir) {
+  mesActual += dir;
   if (mesActual < 0) { mesActual = 11; añoActual--; }
   else if (mesActual > 11) { mesActual = 0; añoActual++; }
   cerrarEventosDia();
@@ -624,9 +683,9 @@ function cambiarMes(direccion) {
 }
 
 function irHoy() {
-  const hoy = new Date();
-  mesActual = hoy.getMonth();
-  añoActual = hoy.getFullYear();
+  const h = new Date();
+  mesActual = h.getMonth();
+  añoActual = h.getFullYear();
   cerrarEventosDia();
   render(eventos);
 }
@@ -636,22 +695,14 @@ function irHoy() {
 // ============================================
 function cambiarVista(vista) {
   vistaActual = vista;
-  
-  document.querySelectorAll('.view-btn').forEach((btn, i) => {
-    btn.classList.toggle('active', (vista === 'tarjetas' && i === 0) || (vista === 'calendario' && i === 1));
+  document.querySelectorAll('.view-btn').forEach((b, i) => {
+    b.classList.toggle('active', (vista === 'tarjetas' && i === 0) || (vista === 'calendario' && i === 1));
   });
   
   const vt = document.getElementById('vistaTarjetas');
   const vc = document.getElementById('vistaCalendario');
-  
-  if (vista === 'tarjetas') {
-    if (vt) vt.style.display = 'block';
-    if (vc) vc.style.display = 'none';
-  } else {
-    if (vt) vt.style.display = 'none';
-    if (vc) vc.style.display = 'block';
-  }
-  
+  if (vt) vt.style.display = vista === 'tarjetas' ? 'block' : 'none';
+  if (vc) vc.style.display = vista === 'calendario' ? 'block' : 'none';
   render(eventos);
 }
 
@@ -660,46 +711,33 @@ function cambiarVista(vista) {
 // ============================================
 function abrirModal(ev) {
   const modal = document.getElementById('modal');
-  if (!modal) {
-    console.warn('⚠️ #modal no encontrado');
-    return;
-  }
+  if (!modal) return;
   
   const nombre = ev.Evento || ev["ID Eventos"] || 'Sin nombre';
   const desc = ev.Descripción || ev.Descripcion || 'Sin descripción.';
-  const imgUrl = extraerImg(ev["Imagen URL"]) || extraerImg(ev.Cartel);
-  const img = imgUrl || 'https://placehold.co/600x400/032845/ffffff?text=COAJ';
+  const img = extraerImg(ev["Imagen URL"]) || extraerImg(ev.Cartel) || 'https://placehold.co/600x400/032845/ffffff?text=COAJ';
 
-  const modalImg = document.getElementById('modalImg');
-  const modalTitulo = document.getElementById('modalTitulo');
-  const modalDescripcion = document.getElementById('modalDescripcion');
+  document.getElementById('modalImg').src = img;
+  document.getElementById('modalTitulo').textContent = nombre;
+  document.getElementById('modalDescripcion').textContent = desc;
+
   const badges = document.getElementById('modalBadges');
-  const info = document.getElementById('modalInfo');
+  badges.innerHTML = '';
+  const estado = calcularEstado(ev);
+  if (estado === 'Desarrollo') badges.innerHTML += '<span class="modal-badge badge-desarrollo">En curso</span>';
+  else if (estado === 'Finalizado') badges.innerHTML += '<span class="modal-badge badge-finalizado">Finalizado</span>';
+  else if (estado === 'Programado') badges.innerHTML += '<span class="modal-badge badge-programado">Próximo</span>';
   
-  if (modalImg) modalImg.src = img;
-  if (modalTitulo) modalTitulo.textContent = nombre;
-  if (modalDescripcion) modalDescripcion.textContent = desc;
+  const cat = ev.Categoría || ev.Categoria;
+  if (cat) badges.innerHTML += `<span class="modal-badge" style="background:#e8552a;color:white;">${cat}</span>`;
 
-  if (badges) {
-    badges.innerHTML = '';
-    const estado = calcularEstado(ev);
-    if (estado === 'Desarrollo') badges.innerHTML += '<span class="modal-badge badge-desarrollo">En curso</span>';
-    else if (estado === 'Finalizado') badges.innerHTML += '<span class="modal-badge badge-finalizado">Finalizado</span>';
-    else if (estado === 'Programado') badges.innerHTML += '<span class="modal-badge badge-programado">Próximo</span>';
-    
-    const cat = ev.Categoría || ev.Categoria;
-    if (cat) badges.innerHTML += `<span class="modal-badge" style="background:#e8552a;color:white;">${cat}</span>`;
-  }
-
-  if (info) {
-    info.innerHTML = `
-      <div class="modal-info-card"><small>📅 Del</small><strong>${formatearFecha(ev["Fecha inicio"])}</strong></div>
-      <div class="modal-info-card"><small>⏰ Al</small><strong>${formatearFecha(ev["Fecha finalización"])}</strong></div>
-      <div class="modal-info-card"><small>🏢 Centro</small><strong>${ev["Centro Juvenil"] || 'N/A'}</strong></div>
-      <div class="modal-info-card"><small>📚 Programa</small><strong>${ev.Programa || 'N/A'}</strong></div>
-      <div class="modal-info-card"><small>👥 Plazas</small><strong>${ev.Plazas || 'N/A'}</strong></div>
-    `;
-  }
+  document.getElementById('modalInfo').innerHTML = `
+    <div class="modal-info-card"><small>📅 Del</small><strong>${formatearFecha(ev["Fecha inicio"])}</strong></div>
+    <div class="modal-info-card"><small>⏰ Al</small><strong>${formatearFecha(ev["Fecha finalización"])}</strong></div>
+    <div class="modal-info-card"><small>🏢 Centro</small><strong>${ev["Centro Juvenil"] || 'N/A'}</strong></div>
+    <div class="modal-info-card"><small>📚 Programa</small><strong>${ev.Programa || 'N/A'}</strong></div>
+    <div class="modal-info-card"><small>👥 Plazas</small><strong>${ev.Plazas || 'N/A'}</strong></div>
+  `;
 
   modal.classList.add('active');
   document.body.classList.add('modal-open');
@@ -707,8 +745,7 @@ function abrirModal(ev) {
 
 function cerrarModal(e) {
   if (!e || e.target.id === 'modal') {
-    const modal = document.getElementById('modal');
-    if (modal) modal.classList.remove('active');
+    document.getElementById('modal')?.classList.remove('active');
     document.body.classList.remove('modal-open');
   }
 }
@@ -716,19 +753,11 @@ function cerrarModal(e) {
 // ============================================
 // TOAST
 // ============================================
-function mostrarToast(mensaje, tipo = 'success') {
+function mostrarToast(msg, tipo = 'success') {
   const toast = document.getElementById('toast');
-  if (!toast) {
-    console.log(`Toast [${tipo}]: ${mensaje}`);
-    return;
-  }
-  
-  const icon = document.getElementById('toastIcon');
-  const msg = document.getElementById('toastMessage');
-  
-  if (msg) msg.textContent = mensaje;
-  if (icon) icon.textContent = tipo === 'success' ? '✓' : '✕';
-  
+  if (!toast) return;
+  document.getElementById('toastMessage').textContent = msg;
+  document.getElementById('toastIcon').textContent = tipo === 'success' ? '✓' : '✕';
   toast.className = `toast ${tipo} show`;
   setTimeout(() => toast.classList.remove('show'), 3000);
 }
@@ -738,11 +767,7 @@ function mostrarToast(mensaje, tipo = 'success') {
 // ============================================
 function actualizarFecha() {
   const el = document.getElementById('fecha');
-  if (el) {
-    el.textContent = new Date().toLocaleDateString('es-ES', {
-      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-    });
-  }
+  if (el) el.textContent = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 // ============================================
@@ -750,10 +775,13 @@ function actualizarFecha() {
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🎯 Iniciando Eventos COAJ...');
-  console.log('📡 API_BASE:', API_BASE);
-  
+  cargarTema();
   actualizarFecha();
-  cargarEventos();
+  verificarSesion(); // ← Verifica sesión guardada de actividades
+  
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.avatar-btn') && !e.target.closest('.user-menu')) cerrarUserMenu();
+  });
   
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') cerrarModal();
