@@ -67,6 +67,22 @@
           </div>
         </a>
         
+        <!-- Desktop Navigation -->
+        <nav class="desktop-nav">
+          <a href="../index.html" class="desktop-nav-item">
+            <span class="material-symbols-outlined">home</span>
+            Inicio
+          </a>
+          <a href="actividades.html" class="desktop-nav-item">
+            <span class="material-symbols-outlined">play_circle</span>
+            Actividades
+          </a>
+          <a href="#" class="desktop-nav-item active">
+            <span class="material-symbols-outlined">event</span>
+            Eventos
+          </a>
+        </nav>
+        
         <div class="header-actions">
           <button class="icon-btn" onclick="refrescarDatos()" title="Actualizar datos">
             <span class="material-symbols-outlined">refresh</span>
@@ -214,39 +230,24 @@
       </div>
     </main>
 
-    <!-- Bottom Navigation -->
+    <!-- Bottom Navigation (Mobile) -->
     <nav class="bottom-nav">
       <!-- Guest Navigation -->
       <div id="bottomNavGuest" class="nav-items">
         <a href="../index.html" class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
+          <span class="material-symbols-outlined">home</span>
           <span>Inicio</span>
         </a>
         <a href="actividades.html" class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <circle cx="12" cy="12" r="10"/>
-            <polygon points="10 8 16 12 10 16 10 8"/>
-          </svg>
+          <span class="material-symbols-outlined">play_circle</span>
           <span>Actividades</span>
         </a>
         <a href="#" class="nav-item active">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <rect x="3" y="4" width="18" height="18" rx="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
+          <span class="material-symbols-outlined">event</span>
           <span>Eventos</span>
         </a>
         <button class="nav-item" onclick="mostrarLoginModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-            <polyline points="10 17 15 12 10 7"/>
-            <line x1="15" y1="12" x2="3" y2="12"/>
-          </svg>
+          <span class="material-symbols-outlined">login</span>
           <span>Entrar</span>
         </button>
       </div>
@@ -254,34 +255,19 @@
       <!-- User Navigation -->
       <div id="bottomNavUser" class="nav-items" style="display:none;">
         <a href="../index.html" class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
+          <span class="material-symbols-outlined">home</span>
           <span>Inicio</span>
         </a>
         <a href="actividades.html" class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <circle cx="12" cy="12" r="10"/>
-            <polygon points="10 8 16 12 10 16 10 8"/>
-          </svg>
+          <span class="material-symbols-outlined">play_circle</span>
           <span>Actividades</span>
         </a>
         <a href="#" class="nav-item active">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <rect x="3" y="4" width="18" height="18" rx="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
+          <span class="material-symbols-outlined">event</span>
           <span>Eventos</span>
         </a>
         <button class="nav-item" onclick="cerrarSesion()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-            <polyline points="16 17 21 12 16 7"/>
-            <line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
+          <span class="material-symbols-outlined">logout</span>
           <span>Salir</span>
         </button>
       </div>
