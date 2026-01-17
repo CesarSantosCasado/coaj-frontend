@@ -68,7 +68,7 @@
         </a>
         
         <div class="header-actions">
-          <button class="icon-btn" onclick="refrescarDatos()" title="Actualizar datos">
+          <button class="icon-btn" onclick="refrescarEventos()" title="Actualizar datos">
             <span class="material-symbols-outlined">refresh</span>
           </button>
           <button class="icon-btn" onclick="toggleTheme()" title="Cambiar tema">
@@ -101,37 +101,21 @@
     <main class="main">
       <!-- View Toggle -->
       <div class="view-toggle">
-        <button class="view-btn active" id="btnVistaTarjetas" onclick="cambiarVista('tarjetas')">
+        <button class="view-btn active" onclick="cambiarVista('tarjetas')">
           <span class="material-symbols-outlined">grid_view</span>
           Tarjetas
         </button>
-        <button class="view-btn" id="btnVistaCalendario" onclick="cambiarVista('calendario')">
+        <button class="view-btn" onclick="cambiarVista('calendario')">
           <span class="material-symbols-outlined">calendar_month</span>
           Calendario
         </button>
       </div>
 
-      <!-- Search Section -->
-      <section class="search-section">
-        <div class="search-bar">
-          <span class="material-symbols-outlined">search</span>
-          <input type="text" id="searchInput" placeholder="Buscar evento, categoría o centro..." oninput="buscarEventos()">
-        </div>
-      </section>
+      <!-- Filtros Categoría -->
+      <div class="filtros-container" id="filtros"></div>
 
-      <!-- Filters Section -->
-      <section class="filters-section" id="filtersSection">
-        <!-- Filtros Categoría -->
-        <div>
-          <span class="filter-label">Categoría</span>
-          <div class="filters-row" id="filtrosCategoria"></div>
-        </div>
-        <!-- Filtros Centro (COAJ) -->
-        <div style="margin-top: var(--space-md);">
-          <span class="filter-label">Centro COAJ</span>
-          <div class="filters-row" id="filtrosCentro"></div>
-        </div>
-      </section>
+      <!-- Filtros Centro -->
+      <div class="filtros-container" id="filtrosCentros"></div>
 
       <!-- Loading State -->
       <div class="loading-state" id="loading">
@@ -140,56 +124,17 @@
       </div>
 
       <!-- Empty State -->
-      <div class="empty-state" id="emptyState">
+      <div class="empty-state" id="empty">
         <span class="material-symbols-outlined">event_busy</span>
         <h3>No hay eventos</h3>
         <p>No se encontraron eventos disponibles</p>
       </div>
 
-      <!-- Search Results Section -->
-      <section class="section hidden" id="searchResults">
-        <div class="section-header">
-          <h2 class="section-title">
-            <span class="icon">🔍</span>
-            Resultados de búsqueda
-          </h2>
-          <button class="section-action" onclick="cerrarBusqueda()">Cancelar</button>
-        </div>
-        <div class="events-list" id="searchResultsList"></div>
-      </section>
-
       <!-- Vista Tarjetas -->
-      <div id="vistaTarjetas">
-        <!-- Próximos Eventos -->
-        <section class="section hidden" id="upcomingSection">
-          <div class="section-header">
-            <h2 class="section-title">
-              <span class="icon">📅</span>
-              Próximos Eventos
-            </h2>
-          </div>
-          <div class="carousel-wrapper">
-            <div class="carousel" id="upcomingCarousel"></div>
-          </div>
-        </section>
-
-        <!-- Todos los Eventos -->
-        <section class="section hidden" id="allEventsSection">
-          <div class="section-header">
-            <h2 class="section-title">
-              <span class="icon">📋</span>
-              Todos los Eventos
-            </h2>
-            <span class="section-count" id="totalCount"></span>
-          </div>
-          <div class="events-list" id="allEventsList"></div>
-        </section>
-      </div>
+      <div id="vistaTarjetas"></div>
 
       <!-- Vista Calendario -->
-      <div id="vistaCalendario" style="display: none;">
-        <div class="calendar-container" id="calendarContainer"></div>
-      </div>
+      <div id="vistaCalendario" style="display: none;"></div>
     </main>
 
     <!-- Bottom Navigation -->
@@ -267,56 +212,42 @@
   </div>
 
   <!-- ========================================
-       CATEGORY MODAL (Drawer)
+       MODAL DETALLE
        ======================================== -->
-  <div class="modal-overlay" id="categoryOverlay" onclick="cerrarModalCategoria()"></div>
-  <div class="modal-drawer" id="categoryModal">
-    <div class="modal-handle"></div>
-    <div class="modal-header">
-      <button class="modal-back" onclick="cerrarModalCategoria()">
+  <div class="modal" id="modal" onclick="cerrarModal(event)">
+    <div class="modal-dialog" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="cerrarModal()">
         <span class="material-symbols-outlined">close</span>
       </button>
-      <h2 class="modal-title" id="categoryModalTitle">
-        <span id="categoryModalIcon">🎯</span>
-        <span id="categoryModalName">Categoría</span>
-        <span class="modal-count" id="categoryModalCount">0</span>
-      </h2>
-    </div>
-    <div class="modal-body">
-      <div class="events-list" id="categoryEventsList"></div>
-    </div>
-  </div>
+      
+      <img class="modal-header-img" id="modalImg" src="" alt="">
+      
+      <div class="modal-body">
+        <h2 class="modal-title" id="modalTitulo"></h2>
+        <div class="modal-badges" id="modalBadges"></div>
 
-  <!-- ========================================
-       EVENT DETAIL MODAL
-       ======================================== -->
-  <div class="detail-modal" id="detailModal">
-    <div class="detail-image" id="detailImage">
-      <button class="detail-close" onclick="cerrarModalDetalle()">
-        <span class="material-symbols-outlined">arrow_back</span>
-      </button>
-    </div>
-    <div class="detail-content">
-      <div class="detail-badges" id="detailBadges"></div>
-      <h2 class="detail-title" id="detailTitle"></h2>
-      <p class="detail-description" id="detailDescription"></p>
-      <div class="detail-info-grid" id="detailInfo"></div>
-      <div class="detail-actions">
-        <button class="btn-secondary" onclick="compartirEvento()">
-          <span class="material-symbols-outlined">share</span>
-          Compartir
-        </button>
-        <button class="btn-primary" id="detailActionBtn">
-          <span class="material-symbols-outlined">how_to_reg</span>
-          Inscribirme
-        </button>
+        <div class="modal-section">
+          <div class="section-title">
+            <span class="material-symbols-outlined">description</span>
+            Descripción
+          </div>
+          <div class="modal-description" id="modalDescripcion"></div>
+        </div>
+
+        <div class="modal-section">
+          <div class="section-title">
+            <span class="material-symbols-outlined">info</span>
+            Información
+          </div>
+          <div class="modal-grid" id="modalInfo"></div>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Toast -->
   <div class="toast" id="toast">
-    <span class="material-symbols-outlined" id="toastIcon">check_circle</span>
+    <span id="toastIcon">✓</span>
     <span id="toastMessage">Mensaje</span>
   </div>
 
