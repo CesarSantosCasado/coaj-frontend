@@ -1407,15 +1407,19 @@ body {
     max-width: 560px;
     max-height: 80vh;
     left: 50%;
-    transform: translateX(-50%) translateY(100%);
-    border-radius: var(--radius-xl);
+    right: auto;
     bottom: auto;
     top: 50%;
-    margin-top: -40vh;
+    transform: translate(-50%, -50%) scale(0.95);
+    border-radius: var(--radius-xl);
+    opacity: 0;
+    visibility: hidden;
   }
   
   .modal-drawer.active {
-    transform: translateX(-50%) translateY(0);
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    visibility: visible;
   }
   
   .modal-body {
