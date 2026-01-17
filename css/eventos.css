@@ -1633,3 +1633,234 @@ body {
     order: -1;
   }
 }
+/* ============================================
+   CORRECCIONES MÓVIL - Agregar al final de eventos.css
+   ============================================ */
+
+/* === OVERFLOW GENERAL MÓVIL === */
+@media (max-width: 767px) {
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+  
+  .app {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+  
+  .main {
+    padding: var(--space-md);
+    padding-bottom: calc(80px + var(--safe-bottom));
+    overflow-x: hidden;
+  }
+  
+  /* === CALENDARIO COMPACTO === */
+  .calendario-container {
+    padding: var(--space-md);
+  }
+  
+  .calendario-header {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+  }
+  
+  .calendario-nav {
+    order: 1;
+    flex: 1;
+  }
+  
+  .calendario-nav button {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+  
+  .calendario-mes {
+    font-size: 0.95rem;
+    min-width: auto;
+    flex: 1;
+  }
+  
+  .btn-hoy {
+    order: 2;
+    padding: var(--space-xs) var(--space-sm);
+    font-size: 0.75rem;
+  }
+  
+  .calendario-grid {
+    gap: 2px;
+  }
+  
+  .calendario-dia-semana {
+    padding: var(--space-xs);
+    font-size: 0.65rem;
+  }
+  
+  .calendario-dia {
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    min-height: 36px;
+  }
+  
+  .calendario-dia-numero {
+    font-size: 0.75rem;
+  }
+  
+  .calendario-dia-contador {
+    font-size: 0.55rem;
+  }
+  
+  /* === CENTROS - 2 FILAS CON SCROLL === */
+  #centrosSection .categories-grid,
+  #centrosGrid {
+    display: grid;
+    grid-template-rows: repeat(2, auto);
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: var(--space-sm);
+    padding-bottom: var(--space-sm);
+    margin: 0 calc(-1 * var(--space-md));
+    padding-left: var(--space-md);
+    padding-right: var(--space-md);
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  
+  #centrosSection .categories-grid::-webkit-scrollbar,
+  #centrosGrid::-webkit-scrollbar {
+    display: none;
+  }
+  
+  #centrosGrid .category-chip {
+    scroll-snap-align: start;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  
+  /* === CATEGORÍAS SCROLL HORIZONTAL === */
+  #categoriesGrid {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: var(--space-sm);
+    padding-bottom: var(--space-sm);
+    margin: 0 calc(-1 * var(--space-md));
+    padding-left: var(--space-md);
+    padding-right: var(--space-md);
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  
+  #categoriesGrid::-webkit-scrollbar {
+    display: none;
+  }
+  
+  #categoriesGrid .category-chip {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+  
+  /* === CAROUSEL FIX === */
+  .carousel-wrapper {
+    margin: 0 calc(-1 * var(--space-md));
+    padding: 0 var(--space-md);
+  }
+  
+  .event-card {
+    flex: 0 0 260px;
+  }
+  
+  /* === SEARCH BAR === */
+  .search-bar {
+    padding: var(--space-xs) var(--space-sm);
+  }
+  
+  .search-bar input {
+    font-size: 0.9rem;
+  }
+  
+  /* === VIEW TOGGLE === */
+  .view-toggle {
+    padding: 2px;
+  }
+  
+  .view-btn {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: 0.8rem;
+  }
+  
+  .view-btn .material-symbols-outlined {
+    font-size: 16px;
+  }
+  
+  /* === SECTION HEADERS === */
+  .section-header {
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+  
+  .section-title {
+    font-size: 1rem;
+  }
+  
+  .section-title .icon {
+    font-size: 1.1rem;
+  }
+  
+  /* === EVENTOS DÍA SECTION === */
+  #eventosDiaSection {
+    margin-top: var(--space-md);
+  }
+  
+  #eventosDiaSection .events-list {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* === MÓVIL PEQUEÑO (< 400px) === */
+@media (max-width: 400px) {
+  .calendario-dia {
+    min-height: 32px;
+  }
+  
+  .calendario-dia-numero {
+    font-size: 0.7rem;
+  }
+  
+  .calendario-mes {
+    font-size: 0.85rem;
+  }
+  
+  .category-chip {
+    padding: 6px 10px;
+  }
+  
+  .category-name {
+    font-size: 0.75rem;
+  }
+  
+  .category-count {
+    font-size: 0.65rem;
+    padding: 1px 5px;
+  }
+  
+  .event-card {
+    flex: 0 0 220px;
+  }
+  
+  .event-card-image {
+    height: 120px;
+  }
+  
+  .event-card-title {
+    font-size: 0.9rem;
+  }
+}
