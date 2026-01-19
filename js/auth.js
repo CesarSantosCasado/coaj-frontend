@@ -1,12 +1,49 @@
 // ============================================
 // COAJ MADRID - AUTH.JS
-// Sistema de autenticación + Bottom Nav Móvil
+// Sistema de autenticación + Tema + Bottom Nav
 // ============================================
 
 const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
 
 let catalogos = { municipios: [], distritos: [], barrios: [] };
 let aliasTimeout = null;
+
+// ============================================
+// TEMA - Index siempre inicia en claro
+// ============================================
+function aplicarTema() {
+  // Index SIEMPRE inicia en light
+  document.documentElement.setAttribute('data-theme', 'light');
+  localStorage.setItem('coajTheme', 'light');
+  actualizarIconosTema('light');
+}
+
+function toggleTheme() {
+  const actual = document.documentElement.getAttribute('data-theme');
+  const nuevo = actual === 'dark' ? 'light' : 'dark';
+  
+  document.documentElement.setAttribute('data-theme', nuevo);
+  localStorage.setItem('coajTheme', nuevo);
+  actualizarIconosTema(nuevo);
+}
+
+function actualizarIconosTema(tema) {
+  const themeIcon = document.getElementById('themeIcon');
+  const menuThemeIcon = document.getElementById('menuThemeIcon');
+  const menuThemeText = document.getElementById('menuThemeText');
+  
+  const icono = tema === 'dark' ? 'light_mode' : 'dark_mode';
+  const texto = tema === 'dark' ? 'Modo Claro' : 'Modo Oscuro';
+  
+  if (themeIcon) themeIcon.textContent = icono;
+  if (menuThemeIcon) menuThemeIcon.textContent = icono;
+  if (menuThemeText) menuThemeText.textContent = texto;
+}
+
+function toggleUserMenu() {
+  const menu = document.getElementById('userMenu');
+  if (menu) menu.classList.toggle('active');
+}
 
 // ============================================
 // SESIÓN
@@ -29,11 +66,15 @@ function mostrarUsuarioLogueado(usuario) {
   const headerUser = document.getElementById('headerUser');
   const nombreUsuario = document.getElementById('nombreUsuario');
   const userInitial = document.getElementById('userInitial');
+  const menuUserInitial = document.getElementById('menuUserInitial');
+  const menuUserName = document.getElementById('menuUserName');
   
   if (headerAuth) headerAuth.style.display = 'none';
   if (headerUser) headerUser.style.display = 'flex';
   if (nombreUsuario) nombreUsuario.textContent = nombre;
   if (userInitial) userInitial.textContent = inicial;
+  if (menuUserInitial) menuUserInitial.textContent = inicial;
+  if (menuUserName) menuUserName.textContent = nombre;
 
   // Móvil - Bottom Nav
   const bottomNavGuest = document.getElementById('bottomNavGuest');
@@ -63,6 +104,10 @@ function cerrarSesion() {
 
   if (bottomNavGuest) bottomNavGuest.style.display = 'flex';
   if (bottomNavUser) bottomNavUser.style.display = 'none';
+
+  // Cerrar menú usuario
+  const userMenu = document.getElementById('userMenu');
+  if (userMenu) userMenu.classList.remove('active');
   
   toast('Sesión cerrada correctamente', 'success');
 }
@@ -375,9 +420,14 @@ function mostrarError(div, msg) {
 
 function toast(msg, tipo = 'success') {
   const t = document.getElementById('toast');
+  const icon = document.getElementById('toastIcon');
+  const message = document.getElementById('toastMessage');
+  
   if (!t) return;
   
-  t.textContent = msg;
+  if (icon) icon.textContent = tipo === 'success' ? 'check_circle' : 'error';
+  if (message) message.textContent = msg;
+  
   t.className = 'toast show ' + tipo;
   
   setTimeout(() => t.classList.remove('show'), 3000);
@@ -390,10 +440,9 @@ function togglePassword(inputId, btn) {
   const isPassword = input.type === 'password';
   input.type = isPassword ? 'text' : 'password';
   
-  if (btn) {
-    btn.innerHTML = isPassword 
-      ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22"/></svg>'
-      : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const icon = btn?.querySelector('.material-symbols-outlined');
+  if (icon) {
+    icon.textContent = isPassword ? 'visibility_off' : 'visibility';
   }
 }
 
@@ -408,6 +457,7 @@ function warmup() {
 // EVENT LISTENERS
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
+  aplicarTema(); // Siempre light en index
   verificarSesion();
   warmup();
   setInterval(warmup, 840000);
@@ -416,10 +466,22 @@ document.addEventListener('DOMContentLoaded', () => {
   if (aliasInput) {
     aliasInput.addEventListener('input', (e) => verificarAliasDisponible(e.target.value.trim()));
   }
+
+  // Cerrar menú usuario al hacer clic fuera
+  document.addEventListener('click', (e) => {
+    const userMenu = document.getElementById('userMenu');
+    if (userMenu?.classList.contains('active') && 
+        !e.target.closest('.avatar-btn') && 
+        !e.target.closest('.user-menu')) {
+      userMenu.classList.remove('active');
+    }
+  });
 });
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     cerrarModalAuth();
+    const userMenu = document.getElementById('userMenu');
+    if (userMenu) userMenu.classList.remove('active');
   }
 });
