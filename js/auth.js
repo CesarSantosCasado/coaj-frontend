@@ -258,6 +258,26 @@ async function hacerRegistro(e) {
     return;
   }
 
+  if (!datos.fechaNacimiento) {
+    mostrarError(errorDiv, 'La fecha de nacimiento es obligatoria');
+    return;
+  }
+
+  if (!datos.sexo) {
+    mostrarError(errorDiv, 'El sexo es obligatorio');
+    return;
+  }
+
+  if (!datos.municipio) {
+    mostrarError(errorDiv, 'El municipio es obligatorio');
+    return;
+  }
+
+  if (!datos.centroJuvenil) {
+    mostrarError(errorDiv, 'El centro juvenil es obligatorio');
+    return;
+  }
+
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'Creando cuenta...';
