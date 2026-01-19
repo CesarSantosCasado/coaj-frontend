@@ -1332,6 +1332,9 @@ input, select, textarea {
 /* ============================================
    12. MODAL
    ============================================ */
+/* ============================================
+   12. MODAL
+   ============================================ */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1368,6 +1371,11 @@ input, select, textarea {
   transform-origin: center center;
 }
 
+@media (min-width: 600px) {
+  .modal {
+    max-width: 560px;
+  }
+}
 .modal-close {
   position: absolute;
   top: var(--space-md);
