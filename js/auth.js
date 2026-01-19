@@ -5,14 +5,13 @@
 
 const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
 
-let catalogos = { municipios: [], distritos: [], barrios: [] };
+let catalogos = { municipios: [], distritos: [], barrios: [], centros: [] };
 let aliasTimeout = null;
 
 // ============================================
 // TEMA - Index siempre inicia en claro
 // ============================================
 function aplicarTema() {
-  // Index SIEMPRE inicia en light
   document.documentElement.setAttribute('data-theme', 'light');
   localStorage.setItem('coajTheme', 'light');
   actualizarIconosTema('light');
@@ -240,12 +239,13 @@ async function hacerRegistro(e) {
     email: document.getElementById('regEmail')?.value.trim(),
     alias: document.getElementById('regAlias')?.value.trim(),
     contrasena: document.getElementById('regPassword')?.value,
-    fechaNacimiento: document.getElementById('regFecha')?.value,
-    sexo: document.getElementById('regSexo')?.value,
-    movil: document.getElementById('regMovil')?.value.trim(),
-    municipio: document.getElementById('regMunicipio')?.value,
-    distrito: document.getElementById('regDistrito')?.value,
-    direccion: document.getElementById('regBarrio')?.value
+    fechaNacimiento: document.getElementById('regFecha')?.value || '',
+    sexo: document.getElementById('regSexo')?.value || '',
+    movil: document.getElementById('regMovil')?.value.trim() || '',
+    municipio: document.getElementById('regMunicipio')?.value || '',
+    distrito: document.getElementById('regDistrito')?.value || '',
+    direccion: document.getElementById('regBarrio')?.value || '',
+    centroJuvenil: document.getElementById('regCentro')?.value || ''
   };
 
   if (!datos.usuario || !datos.email || !datos.alias || !datos.contrasena) {
@@ -370,12 +370,19 @@ async function cargarCatalogos() {
   if (catalogos.municipios.length > 0) return;
 
   try {
-    const res = await fetch(`${API_BASE}/catalogos`);
-    const data = await res.json();
-    catalogos = data;
+    const [resCat, resCentros] = await Promise.all([
+      fetch(`${API_BASE}/catalogos`),
+      fetch(`${API_BASE}/centros`)
+    ]);
+    
+    const data = await resCat.json();
+    const dataCentros = await resCentros.json();
+    
+    catalogos = { ...data, centros: dataCentros.centros || [] };
 
     const selMun = document.getElementById('regMunicipio');
     const selDis = document.getElementById('regDistrito');
+    const selCentro = document.getElementById('regCentro');
 
     if (selMun) {
       selMun.innerHTML = '<option value="">Selecciona</option>' + 
@@ -385,6 +392,11 @@ async function cargarCatalogos() {
     if (selDis) {
       selDis.innerHTML = '<option value="">Selecciona</option>' + 
         catalogos.distritos.map(d => `<option value="${d.id}">${d.nombre}</option>`).join('');
+    }
+
+    if (selCentro && catalogos.centros.length > 0) {
+      selCentro.innerHTML = '<option value="">Selecciona tu centro</option>' + 
+        catalogos.centros.map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join('');
     }
   } catch (err) {
     console.error('Error cargando catálogos:', err);
@@ -457,7 +469,7 @@ function warmup() {
 // EVENT LISTENERS
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
-  aplicarTema(); // Siempre light en index
+  aplicarTema();
   verificarSesion();
   warmup();
   setInterval(warmup, 840000);
@@ -467,7 +479,6 @@ document.addEventListener('DOMContentLoaded', () => {
     aliasInput.addEventListener('input', (e) => verificarAliasDisponible(e.target.value.trim()));
   }
 
-  // Cerrar menú usuario al hacer clic fuera
   document.addEventListener('click', (e) => {
     const userMenu = document.getElementById('userMenu');
     if (userMenu?.classList.contains('active') && 
