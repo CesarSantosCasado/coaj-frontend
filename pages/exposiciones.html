@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Exposiciones - COAJ Madrid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400" rel="stylesheet">
+  <link rel="stylesheet" href="../css/exposiciones.css">
+</head>
+<body>
+  <!-- ========================================
+       LOGIN MODAL
+       ======================================== -->
+  <div class="login-overlay" id="loginModal">
+    <div class="login-card">
+      <div class="login-header">
+        <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ Madrid" class="login-logo">
+        <h2>Bienvenido a COAJ</h2>
+        <p>Descubre nuestras exposiciones</p>
+      </div>
+      <div class="login-body">
+        <button class="btn-guest" onclick="entrarComoInvitado()">
+          <span class="material-symbols-outlined">person</span>
+          Continuar como Invitado
+        </button>
+        
+        <div class="login-divider">o inicia sesión</div>
+        
+        <form onsubmit="iniciarSesion(event)">
+          <div class="form-group">
+            <div class="input-field">
+              <span class="material-symbols-outlined">alternate_email</span>
+              <input type="text" id="alias" placeholder="Usuario o alias" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="input-field">
+              <span class="material-symbols-outlined">lock</span>
+              <input type="password" id="contrasena" placeholder="Contraseña" required>
+            </div>
+          </div>
+          <div class="login-error" id="loginError"></div>
+          <button type="submit" class="btn-login">
+            <span class="material-symbols-outlined">login</span>
+            Iniciar Sesión
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================
+       APP CONTAINER
+       ======================================== -->
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-inner">
+        <a href="../index.html" class="header-brand">
+          <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ" class="header-logo">
+          <div class="header-text">
+            <span class="header-greeting" id="headerGreeting">Bienvenido</span>
+            <h1 class="header-title">Exposiciones</h1>
+          </div>
+        </a>
+        
+        <!-- Desktop Navigation -->
+        <nav class="desktop-nav">
+          <a href="../index.html" class="desktop-nav-item">
+            <span class="material-symbols-outlined">home</span>
+            Inicio
+          </a>
+          <a href="actividades.html" class="desktop-nav-item">
+            <span class="material-symbols-outlined">play_circle</span>
+            Actividades
+          </a>
+          <a href="eventos.html" class="desktop-nav-item">
+            <span class="material-symbols-outlined">event</span>
+            Eventos
+          </a>
+          <a href="#" class="desktop-nav-item active">
+            <span class="material-symbols-outlined">museum</span>
+            Exposiciones
+          </a>
+        </nav>
+        
+        <div class="header-actions">
+          <button class="icon-btn" onclick="refrescarDatos()" title="Actualizar datos">
+            <span class="material-symbols-outlined">refresh</span>
+          </button>
+          <button class="icon-btn" onclick="toggleTheme()" title="Cambiar tema">
+            <span class="material-symbols-outlined" id="themeIcon">dark_mode</span>
+          </button>
+          <button class="avatar-btn" id="headerAvatar" onclick="toggleUserMenu()">
+            <span id="avatarInitial">U</span>
+          </button>
+        </div>
+        
+        <!-- User Menu Dropdown -->
+        <div class="user-menu" id="userMenu">
+          <div class="user-menu-header">
+            <div class="user-menu-avatar"><span id="menuAvatarInitial">U</span></div>
+            <span class="user-menu-name" id="menuUserName">Usuario</span>
+          </div>
+          <button class="user-menu-item" onclick="toggleTheme()">
+            <span class="material-symbols-outlined" id="menuThemeIcon">dark_mode</span>
+            <span id="menuThemeText">Modo Oscuro</span>
+          </button>
+          <button class="user-menu-item logout" onclick="cerrarSesion()">
+            <span class="material-symbols-outlined">logout</span>
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+      <!-- View Toggle -->
+      <section class="view-toggle-section">
+        <div class="view-toggle">
+          <button class="view-btn active" onclick="cambiarVista('tarjetas')">
+            <span class="material-symbols-outlined">grid_view</span>
+            Tarjetas
+          </button>
+          <button class="view-btn" onclick="cambiarVista('calendario')">
+            <span class="material-symbols-outlined">calendar_month</span>
+            Calendario
+          </button>
+        </div>
+      </section>
+
+      <!-- Search Section -->
+      <section class="search-section">
+        <div class="search-bar">
+          <span class="material-symbols-outlined">search</span>
+          <input type="text" id="searchInput" placeholder="Buscar exposición, centro o espacio..." oninput="buscarExposiciones()">
+        </div>
+      </section>
+
+      <!-- Loading State -->
+      <div class="loading-state" id="loading">
+        <div class="spinner"></div>
+        <p>Cargando exposiciones...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" id="emptyState">
+        <span class="material-symbols-outlined">museum</span>
+        <h3>No hay exposiciones</h3>
+        <p>No se encontraron exposiciones disponibles</p>
+      </div>
+
+      <!-- Search Results Section -->
+      <section class="section hidden" id="searchResults">
+        <div class="section-header">
+          <h2 class="section-title">
+            <span class="icon">🔍</span>
+            Resultados de búsqueda
+          </h2>
+          <button class="section-action" onclick="cerrarBusqueda()">Cancelar</button>
+        </div>
+        <div class="exposiciones-list" id="searchResultsList"></div>
+      </section>
+
+      <!-- Vista Tarjetas -->
+      <div id="vistaTarjetas">
+        <!-- Exposiciones Activas -->
+        <section class="section hidden" id="activasSection">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="icon">🖼️</span>
+              Exposiciones Activas
+            </h2>
+          </div>
+          <div class="carousel-wrapper">
+            <div class="carousel" id="activasCarousel"></div>
+          </div>
+        </section>
+
+        <!-- Centros -->
+        <section class="section hidden" id="centrosSection">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="icon">🏢</span>
+              Filtrar por Centro
+            </h2>
+          </div>
+          <div class="centros-grid" id="centrosGrid"></div>
+        </section>
+
+        <!-- Todas las Exposiciones -->
+        <section class="section hidden" id="allExposicionesSection">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="icon">📋</span>
+              Todas las Exposiciones
+            </h2>
+            <span class="section-count" id="totalCount"></span>
+          </div>
+          <div class="exposiciones-list" id="allExposicionesList"></div>
+        </section>
+      </div>
+
+      <!-- Vista Calendario -->
+      <div id="vistaCalendario" style="display: none;">
+        <section class="section">
+          <div class="calendario-container" id="calendarioContainer"></div>
+        </section>
+        <section class="section hidden" id="exposicionesDiaSection">
+          <div class="section-header">
+            <h2 class="section-title" id="exposicionesDiaTitulo">
+              <span class="icon">📅</span>
+              Exposiciones del día
+            </h2>
+            <button class="section-action" onclick="cerrarExposicionesDia()">Cerrar</button>
+          </div>
+          <div class="exposiciones-list" id="exposicionesDiaList"></div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Bottom Navigation (Mobile) -->
+    <nav class="bottom-nav">
+      <!-- Guest Navigation -->
+      <div id="bottomNavGuest" class="nav-items">
+        <a href="../index.html" class="nav-item">
+          <span class="material-symbols-outlined">home</span>
+          <span>Inicio</span>
+        </a>
+        <a href="actividades.html" class="nav-item">
+          <span class="material-symbols-outlined">play_circle</span>
+          <span>Actividades</span>
+        </a>
+        <a href="eventos.html" class="nav-item">
+          <span class="material-symbols-outlined">event</span>
+          <span>Eventos</span>
+        </a>
+        <a href="#" class="nav-item active">
+          <span class="material-symbols-outlined">museum</span>
+          <span>Expos</span>
+        </a>
+        <button class="nav-item" onclick="mostrarLoginModal()">
+          <span class="material-symbols-outlined">login</span>
+          <span>Entrar</span>
+        </button>
+      </div>
+      
+      <!-- User Navigation -->
+      <div id="bottomNavUser" class="nav-items" style="display:none;">
+        <a href="../index.html" class="nav-item">
+          <span class="material-symbols-outlined">home</span>
+          <span>Inicio</span>
+        </a>
+        <a href="actividades.html" class="nav-item">
+          <span class="material-symbols-outlined">play_circle</span>
+          <span>Actividades</span>
+        </a>
+        <a href="eventos.html" class="nav-item">
+          <span class="material-symbols-outlined">event</span>
+          <span>Eventos</span>
+        </a>
+        <a href="#" class="nav-item active">
+          <span class="material-symbols-outlined">museum</span>
+          <span>Expos</span>
+        </a>
+        <button class="nav-item" onclick="cerrarSesion()">
+          <span class="material-symbols-outlined">logout</span>
+          <span>Salir</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- ========================================
+       CENTRO MODAL (Drawer)
+       ======================================== -->
+  <div class="modal-overlay" id="centroOverlay" onclick="cerrarModalCentro()"></div>
+  <div class="modal-drawer" id="centroModal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <button class="modal-back" onclick="cerrarModalCentro()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+      <h2 class="modal-title" id="centroModalTitle">
+        <span id="centroModalIcon">🏢</span>
+        <span id="centroModalName">Centro</span>
+        <span class="modal-count" id="centroModalCount">0</span>
+      </h2>
+    </div>
+    <div class="modal-body">
+      <div class="exposiciones-list" id="centroExposicionesList"></div>
+    </div>
+  </div>
+
+  <!-- ========================================
+       EXPOSICION DETAIL MODAL
+       ======================================== -->
+  <div class="detail-modal" id="detailModal">
+    <div class="detail-image" id="detailImage">
+      <button class="detail-close" onclick="cerrarModalDetalle()">
+        <span class="material-symbols-outlined">arrow_back</span>
+      </button>
+    </div>
+    <div class="detail-content">
+      <div class="detail-badges" id="detailBadges"></div>
+      <h2 class="detail-title" id="detailTitle"></h2>
+      <p class="detail-description" id="detailDescription"></p>
+      <div class="detail-info-grid" id="detailInfo"></div>
+      <div class="detail-actions">
+        <button class="btn-secondary" onclick="compartirExposicion()">
+          <span class="material-symbols-outlined">share</span>
+          Compartir
+        </button>
+        <button class="btn-primary" id="detailActionBtn" onclick="abrirUbicacion()">
+          <span class="material-symbols-outlined">location_on</span>
+          Ver Ubicación
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span class="material-symbols-outlined" id="toastIcon">check_circle</span>
+    <span id="toastMessage">Mensaje</span>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../js/config.js"></script>
+  <script src="../js/exposiciones.js"></script>
+</body>
+</html>
