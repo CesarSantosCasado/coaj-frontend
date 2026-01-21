@@ -336,7 +336,7 @@
         </div>
       </form>
 
-      <form class="modal-form" id="formRegistro" style="display:none;" onsubmit="hacerRegistro(event)">
+      <form class="modal-form" id="formRegistro" style="display:none;" onsubmit="return hacerRegistroConValidacion(event)">
         <div class="modal-header">
           <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ" class="modal-logo">
           <h2>¡Únete a COAJ!</h2>
@@ -370,7 +370,7 @@
           <div class="form-row">
             <div class="form-group">
               <label for="regFecha">Fecha de nacimiento *</label>
-              <input type="date" id="regFecha" required>
+              <input type="date" id="regFecha" required onchange="validarEdad()">
             </div>
             <div class="form-group">
               <label for="regSexo">Sexo *</label>
@@ -451,5 +451,64 @@
   </div>
 
   <script src="./js/auth.js"></script>
+  <script>
+    // =============================================
+    // VALIDACIÓN DE EDAD MÍNIMA 14 AÑOS
+    // =============================================
+    
+    function calcularEdad(fechaNacimiento) {
+      const hoy = new Date();
+      const nacimiento = new Date(fechaNacimiento);
+      let edad = hoy.getFullYear() - nacimiento.getFullYear();
+      const mes = hoy.getMonth() - nacimiento.getMonth();
+      if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
+        edad--;
+      }
+      return edad;
+    }
+
+    function validarEdad() {
+      const fecha = document.getElementById('regFecha').value;
+      const errorDiv = document.getElementById('registroError');
+      const inputFecha = document.getElementById('regFecha');
+      
+      if (!fecha) {
+        inputFecha.setCustomValidity('');
+        return true;
+      }
+      
+      const edad = calcularEdad(fecha);
+      
+      if (edad < 14) {
+        errorDiv.textContent = 'Debes tener al menos 14 años para registrarte.';
+        errorDiv.style.display = 'block';
+        inputFecha.setCustomValidity('Debes tener al menos 14 años');
+        inputFecha.style.borderColor = 'var(--error, #ef4444)';
+        return false;
+      } else {
+        errorDiv.textContent = '';
+        errorDiv.style.display = 'none';
+        inputFecha.setCustomValidity('');
+        inputFecha.style.borderColor = '';
+        return true;
+      }
+    }
+
+    function hacerRegistroConValidacion(e) {
+      e.preventDefault();
+      
+      // Validar edad primero
+      if (!validarEdad()) {
+        return false;
+      }
+      
+      // Si la edad es válida, llamar a la función original de registro
+      if (typeof hacerRegistro === 'function') {
+        hacerRegistro(e);
+      }
+      
+      return false;
+    }
+  </script>
 </body>
 </html>
