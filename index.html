@@ -9,6 +9,31 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400" rel="stylesheet">
   <link rel="stylesheet" href="./css/home.css">
+  <style>
+    .checkbox-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    .checkbox-label input[type="checkbox"] {
+      width: 1.25rem;
+      height: 1.25rem;
+      min-width: 1.25rem;
+      margin-top: 0.125rem;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+    .checkbox-text {
+      color: var(--text-secondary);
+    }
+    .checkbox-label input[type="checkbox"]:invalid {
+      outline: 2px solid var(--error, #ef4444);
+      outline-offset: 2px;
+    }
+  </style>
 </head>
 <body>
   <!-- HEADER -->
@@ -161,7 +186,7 @@
           </span>
         </a>
 
- <a href="javascript:void(0)" class="service-card" onclick="abrirModal('registro')">
+        <a href="javascript:void(0)" class="service-card" onclick="abrirModal('registro')">
           <div class="service-icon">
             <span class="material-symbols-outlined">person_add</span>
           </div>
@@ -333,7 +358,7 @@
           <div class="form-row">
             <div class="form-group">
               <label for="regAlias">Alias *</label>
-          <input type="text" id="regAlias" placeholder="Se genera automático" required readonly>
+              <input type="text" id="regAlias" placeholder="Se genera automático" required readonly>
               <span class="input-hint" id="aliasStatus"></span>
             </div>
             <div class="form-group">
@@ -392,6 +417,15 @@
               <select id="regCentro" required>
                 <option value="">Selecciona tu centro</option>
               </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="checkbox-label">
+                <input type="checkbox" id="regAutorizacion" required>
+                <span class="checkbox-text">Autorizo al Ayuntamiento de Madrid a realizar fotografías durante mi presencia en este espacio público y a publicar dichas imágenes con fines informativos y de difusión de las actividades municipales. *</span>
+              </label>
             </div>
           </div>
         </div>
