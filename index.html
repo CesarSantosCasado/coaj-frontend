@@ -386,7 +386,7 @@
           <div class="form-row">
             <div class="form-group">
               <label for="regMovil">Móvil</label>
-              <input type="tel" id="regMovil" placeholder="612 345 678">
+              <input type="tel" id="regMovil" placeholder="612 345 678" pattern="^[67][0-9]{8}$" oninput="validarMovil()" title="El móvil debe empezar por 6 o 7 y tener 9 dígitos">
             </div>
             <div class="form-group">
               <label for="regMunicipio">Municipio *</label>
@@ -494,6 +494,34 @@
       }
     }
 
+    // =============================================
+    // VALIDACIÓN DE MÓVIL ESPAÑOL (6 o 7)
+    // =============================================
+    
+    function validarMovil() {
+      const inputMovil = document.getElementById('regMovil');
+      const valor = inputMovil.value.replace(/\s/g, ''); // Quitar espacios
+      const errorDiv = document.getElementById('registroError');
+      
+      if (!valor) {
+        inputMovil.setCustomValidity('');
+        inputMovil.style.borderColor = '';
+        return true;
+      }
+      
+      const regex = /^[67][0-9]{8}$/;
+      
+      if (!regex.test(valor)) {
+        inputMovil.setCustomValidity('El móvil debe empezar por 6 o 7 y tener 9 dígitos');
+        inputMovil.style.borderColor = 'var(--error, #ef4444)';
+        return false;
+      } else {
+        inputMovil.setCustomValidity('');
+        inputMovil.style.borderColor = '';
+        return true;
+      }
+    }
+
     function hacerRegistroConValidacion(e) {
       e.preventDefault();
       
@@ -502,7 +530,14 @@
         return false;
       }
       
-      // Si la edad es válida, llamar a la función original de registro
+      // Validar móvil
+      if (!validarMovil()) {
+        document.getElementById('registroError').textContent = 'El móvil debe empezar por 6 o 7 y tener 9 dígitos.';
+        document.getElementById('registroError').style.display = 'block';
+        return false;
+      }
+      
+      // Si todo es válido, llamar a la función original de registro
       if (typeof hacerRegistro === 'function') {
         hacerRegistro(e);
       }
