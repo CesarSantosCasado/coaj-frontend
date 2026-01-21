@@ -765,7 +765,7 @@ async function inscribirse() {
     const res = await fetch(`${API_BASE}/inscribir`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ actividad: actividadSeleccionada.Actividad, usuario: usuario.alias })
+  body: JSON.stringify({ actividadId: actividadSeleccionada['ID Actividad'], usuario: usuario.alias })
     });
     
     const data = await res.json();
