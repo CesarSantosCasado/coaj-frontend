@@ -694,186 +694,140 @@
     <span class="material-symbols-outlined toast-icon" id="toastIcon">check_circle</span>
     <span id="toastMessage">Mensaje</span>
   </div>
+<script src="./js/auth.js"></script>
+<script>
+  // =============================================
+  // RECUPERAR CONTRASEÑA
+  // =============================================
+  function mostrarRecuperarContrasena() {
+    document.getElementById('forgotModal').classList.add('active');
+    document.getElementById('forgotEmail').value = '';
+    document.getElementById('forgotError').style.display = 'none';
+    document.getElementById('forgotSuccess').style.display = 'none';
+    document.getElementById('forgotEmail').focus();
+  }
 
-  <script src="./js/auth.js"></script>
-  <script>
-    const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
+  function cerrarRecuperarContrasena() {
+    document.getElementById('forgotModal').classList.remove('active');
+  }
 
-    // =============================================
-    // RECUPERAR CONTRASEÑA
-    // =============================================
-    function mostrarRecuperarContrasena() {
-      document.getElementById('forgotModal').classList.add('active');
-      document.getElementById('forgotEmail').value = '';
-      document.getElementById('forgotError').style.display = 'none';
-      document.getElementById('forgotSuccess').style.display = 'none';
-      document.getElementById('forgotEmail').focus();
-    }
-
-    function cerrarRecuperarContrasena() {
-      document.getElementById('forgotModal').classList.remove('active');
-    }
-
-    async function enviarRecuperacion() {
-      const email = document.getElementById('forgotEmail').value.trim();
-      const errorEl = document.getElementById('forgotError');
-      const successEl = document.getElementById('forgotSuccess');
-      const btn = document.getElementById('btnForgot');
-      
-      if (!email) {
-        errorEl.textContent = 'Por favor ingresa tu correo electrónico';
-        errorEl.style.display = 'block';
-        successEl.style.display = 'none';
-        return;
-      }
-
-      // Validar formato email
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        errorEl.textContent = 'Por favor ingresa un correo válido';
-        errorEl.style.display = 'block';
-        successEl.style.display = 'none';
-        return;
-      }
-
-      btn.disabled = true;
-      btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Enviando...';
-      errorEl.style.display = 'none';
+  async function enviarRecuperacion() {
+    const email = document.getElementById('forgotEmail').value.trim();
+    const errorEl = document.getElementById('forgotError');
+    const successEl = document.getElementById('forgotSuccess');
+    const btn = document.getElementById('btnForgot');
+    
+    if (!email) {
+      errorEl.textContent = 'Por favor ingresa tu correo electrónico';
+      errorEl.style.display = 'block';
       successEl.style.display = 'none';
+      return;
+    }
 
-      try {
-        const res = await fetch(`${API_BASE}/olvide-contrasena`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        
-        const data = await res.json();
-        
-        if (data.success) {
-          successEl.innerHTML = '✅ ' + data.message;
-          successEl.style.display = 'block';
-          document.getElementById('forgotEmail').value = '';
-          
-          // Cerrar modal después de 3 segundos
-          setTimeout(() => {
-            cerrarRecuperarContrasena();
-            if (typeof mostrarToast === 'function') {
-              mostrarToast('Revisa tu bandeja de entrada', 'success');
-            }
-          }, 3000);
-        } else {
-          errorEl.textContent = data.message || 'Error al procesar la solicitud';
-          errorEl.style.display = 'block';
-        }
-      } catch (e) {
-        errorEl.textContent = 'Error de conexión. Intenta de nuevo.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errorEl.textContent = 'Por favor ingresa un correo válido';
+      errorEl.style.display = 'block';
+      successEl.style.display = 'none';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Enviando...';
+    errorEl.style.display = 'none';
+    successEl.style.display = 'none';
+
+    try {
+      const res = await fetch(`${API_BASE}/olvide-contrasena`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        successEl.innerHTML = '✅ ' + data.message;
+        successEl.style.display = 'block';
+        document.getElementById('forgotEmail').value = '';
+        setTimeout(() => { cerrarRecuperarContrasena(); toast('Revisa tu bandeja de entrada', 'success'); }, 3000);
+      } else {
+        errorEl.textContent = data.message || 'Error al procesar la solicitud';
         errorEl.style.display = 'block';
       }
-
-      btn.disabled = false;
-      btn.innerHTML = '<span class="material-symbols-outlined">send</span> Enviar Contraseña';
+    } catch (e) {
+      errorEl.textContent = 'Error de conexión. Intenta de nuevo.';
+      errorEl.style.display = 'block';
     }
 
-    // Cerrar con ESC
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        cerrarRecuperarContrasena();
-      }
-    });
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined">send</span> Enviar Contraseña';
+  }
 
-    // Enter para enviar
-    document.getElementById('forgotEmail')?.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        enviarRecuperacion();
-      }
-    });
+  document.getElementById('forgotEmail')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); enviarRecuperacion(); }
+  });
 
-    // =============================================
-    // VALIDACIÓN DE EDAD MÍNIMA 14 AÑOS
-    // =============================================
-    function calcularEdad(fechaNacimiento) {
-      const hoy = new Date();
-      const nacimiento = new Date(fechaNacimiento);
-      let edad = hoy.getFullYear() - nacimiento.getFullYear();
-      const mes = hoy.getMonth() - nacimiento.getMonth();
-      if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
-        edad--;
-      }
-      return edad;
+  // =============================================
+  // VALIDACIONES REGISTRO
+  // =============================================
+  function calcularEdad(fecha) {
+    const hoy = new Date();
+    const nac = new Date(fecha);
+    let edad = hoy.getFullYear() - nac.getFullYear();
+    const mes = hoy.getMonth() - nac.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < nac.getDate())) edad--;
+    return edad;
+  }
+
+  function validarEdad() {
+    const fecha = document.getElementById('regFecha').value;
+    const errorDiv = document.getElementById('registroError');
+    const input = document.getElementById('regFecha');
+    
+    if (!fecha) { input.setCustomValidity(''); return true; }
+    
+    if (calcularEdad(fecha) < 14) {
+      errorDiv.textContent = 'Debes tener al menos 14 años para registrarte.';
+      errorDiv.style.display = 'block';
+      input.setCustomValidity('Debes tener al menos 14 años');
+      input.style.borderColor = '#ef4444';
+      return false;
     }
+    errorDiv.style.display = 'none';
+    input.setCustomValidity('');
+    input.style.borderColor = '';
+    return true;
+  }
 
-    function validarEdad() {
-      const fecha = document.getElementById('regFecha').value;
-      const errorDiv = document.getElementById('registroError');
-      const inputFecha = document.getElementById('regFecha');
-      
-      if (!fecha) {
-        inputFecha.setCustomValidity('');
-        return true;
-      }
-      
-      const edad = calcularEdad(fecha);
-      
-      if (edad < 14) {
-        errorDiv.textContent = 'Debes tener al menos 14 años para registrarte.';
-        errorDiv.style.display = 'block';
-        inputFecha.setCustomValidity('Debes tener al menos 14 años');
-        inputFecha.style.borderColor = 'var(--error, #ef4444)';
-        return false;
-      } else {
-        errorDiv.textContent = '';
-        errorDiv.style.display = 'none';
-        inputFecha.setCustomValidity('');
-        inputFecha.style.borderColor = '';
-        return true;
-      }
+  function validarMovil() {
+    const input = document.getElementById('regMovil');
+    const valor = input.value.replace(/\s/g, '');
+    
+    if (!valor) { input.setCustomValidity(''); input.style.borderColor = ''; return true; }
+    
+    if (!/^[67][0-9]{8}$/.test(valor)) {
+      input.setCustomValidity('El móvil debe empezar por 6 o 7 y tener 9 dígitos');
+      input.style.borderColor = '#ef4444';
+      return false;
     }
+    input.setCustomValidity('');
+    input.style.borderColor = '';
+    return true;
+  }
 
-    // =============================================
-    // VALIDACIÓN DE MÓVIL ESPAÑOL (6 o 7)
-    // =============================================
-    function validarMovil() {
-      const inputMovil = document.getElementById('regMovil');
-      const valor = inputMovil.value.replace(/\s/g, '');
-      
-      if (!valor) {
-        inputMovil.setCustomValidity('');
-        inputMovil.style.borderColor = '';
-        return true;
-      }
-      
-      const regex = /^[67][0-9]{8}$/;
-      
-      if (!regex.test(valor)) {
-        inputMovil.setCustomValidity('El móvil debe empezar por 6 o 7 y tener 9 dígitos');
-        inputMovil.style.borderColor = 'var(--error, #ef4444)';
-        return false;
-      } else {
-        inputMovil.setCustomValidity('');
-        inputMovil.style.borderColor = '';
-        return true;
-      }
-    }
-
-    function hacerRegistroConValidacion(e) {
-      e.preventDefault();
-      
-      if (!validarEdad()) return false;
-      
+  function hacerRegistroConValidacion(e) {
+    e.preventDefault();
+    if (!validarEdad() || !validarMovil()) {
       if (!validarMovil()) {
         document.getElementById('registroError').textContent = 'El móvil debe empezar por 6 o 7 y tener 9 dígitos.';
         document.getElementById('registroError').style.display = 'block';
-        return false;
       }
-      
-      if (typeof hacerRegistro === 'function') {
-        hacerRegistro(e);
-      }
-      
       return false;
     }
-  </script>
+    hacerRegistro(e);
+    return false;
+  }
+</script>
+ 
 </body>
 </html>
