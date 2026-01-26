@@ -313,7 +313,15 @@ function getEstadoClass(estado) {
 
 function formatearPeriodo(del, al) {
   if (!del && !al) return 'Por definir';
-  const formatear = d => d ? d.split(' ')[0] : '';
+  const formatear = d => {
+    if (!d) return '';
+    const fecha = d.split(' ')[0];
+    if (fecha.includes('/')) {
+      const [m, dia, año] = fecha.split('/');
+      return `${dia}/${m}/${año}`;
+    }
+    return fecha;
+  };
   return [formatear(del), formatear(al)].filter(Boolean).join(' - ') || 'Por definir';
 }
 
