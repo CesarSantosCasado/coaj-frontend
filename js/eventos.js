@@ -338,14 +338,15 @@ function formatearFecha(str) {
   if (!str) return 'Por confirmar';
   const fecha = parsearFecha(str);
   if (!fecha) return str;
-  return fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  return `${fecha.getDate()}/${fecha.getMonth() + 1}/${fecha.getFullYear()}`;
 }
 
 function formatearFechaCorta(str) {
   if (!str) return 'Por confirmar';
   const fecha = parsearFecha(str);
   if (!fecha) return str;
-  return fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  return `${fecha.getDate()} ${meses[fecha.getMonth()]}`;
 }
 
 function calcularEstado(ev) {
