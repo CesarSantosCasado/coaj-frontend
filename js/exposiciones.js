@@ -278,7 +278,7 @@ function parsearFecha(fechaStr) {
 function formatearFecha(fechaStr) {
   const fecha = parsearFecha(fechaStr);
   if (!fecha) return fechaStr || '';
-  return fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  return `${fecha.getDate()}/${fecha.getMonth() + 1}/${fecha.getFullYear()}`;
 }
 
 function formatearRangoFechas(desde, hasta) {
