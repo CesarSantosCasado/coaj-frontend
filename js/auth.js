@@ -75,7 +75,7 @@ function mostrarUsuarioLogueado(usuario) {
   if (menuUserInitial) menuUserInitial.textContent = inicial;
   if (menuUserName) menuUserName.textContent = nombre;
 
-  // Móvil - Bottom Nav
+  // Móvil
   const bottomNavGuest = document.getElementById('bottomNavGuest');
   const bottomNavUser = document.getElementById('bottomNavUser');
   const bottomUserInitial = document.getElementById('bottomUserInitial');
@@ -85,7 +85,67 @@ function mostrarUsuarioLogueado(usuario) {
   if (bottomNavUser) bottomNavUser.style.display = 'flex';
   if (bottomUserInitial) bottomUserInitial.textContent = inicial;
   if (bottomUserName) bottomUserName.textContent = nombreCorto;
+
+  // VERIFICAR DNI
+  verificarDNI(usuario);
 }
+// ============================================
+// VERIFICACIÓN DNI OBLIGATORIO
+// ============================================
+function verificarDNI(usuario) {
+  if (!usuario.foto) {
+    mostrarBannerDNI();
+  }
+}
+
+function mostrarBannerDNI() {
+  // Remover si ya existe
+  document.getElementById('bannerDNI')?.remove();
+  
+  const banner = document.createElement('div');
+  banner.id = 'bannerDNI';
+  banner.innerHTML = `
+    <div class="dni-overlay"></div>
+    <div class="dni-modal">
+      <div class="dni-icon">
+        <span class="material-symbols-outlined">badge</span>
+      </div>
+      <h2>Actualiza tu DNI</h2>
+      <p>Para continuar usando COAJ Madrid, necesitas subir tu documento de identidad.</p>
+      <button class="btn-dni" onclick="irAPerfil()">
+        <span class="material-symbols-outlined">person</span>
+        Ir a mi perfil
+      </button>
+    </div>
+  `;
+  document.body.appendChild(banner);
+  document.body.style.overflow = 'hidden';
+  
+  // Bloquear cierre
+  banner.querySelector('.dni-overlay').addEventListener('click', (e) => {
+    e.stopPropagation();
+    sacudirModal();
+  });
+}
+
+function sacudirModal() {
+  const modal = document.querySelector('.dni-modal');
+  modal?.classList.add('shake');
+  setTimeout(() => modal?.classList.remove('shake'), 500);
+}
+
+function irAPerfil() {
+  window.location.href = 'pages/perfil.html';
+}
+
+function cerrarBannerDNI() {
+  document.getElementById('bannerDNI')?.remove();
+  document.body.style.overflow = '';
+}
+
+
+
+
 
 function cerrarSesion() {
   localStorage.removeItem('coajUsuario');
