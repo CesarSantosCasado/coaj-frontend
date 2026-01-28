@@ -7,6 +7,7 @@ const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
 
 let catalogos = { municipios: [], distritos: [], barrios: [], centros: [] };
 let aliasTimeout = null;
+let bannerDNIActivo = false;
 
 // ============================================
 // TEMA - Index siempre inicia en claro
@@ -86,20 +87,20 @@ function mostrarUsuarioLogueado(usuario) {
   if (bottomUserInitial) bottomUserInitial.textContent = inicial;
   if (bottomUserName) bottomUserName.textContent = nombreCorto;
 
-  // VERIFICAR DNI
+  // Verificar DNI
   verificarDNI(usuario);
 }
+
 // ============================================
 // VERIFICACIÓN DNI OBLIGATORIO
 // ============================================
 function verificarDNI(usuario) {
   if (!usuario.foto) {
-    mostrarBannerDNI();
+    setTimeout(() => mostrarBannerDNI(), 300);
   }
 }
 
 function mostrarBannerDNI() {
-  // Remover si ya existe
   document.getElementById('bannerDNI')?.remove();
   
   const banner = document.createElement('div');
@@ -111,7 +112,7 @@ function mostrarBannerDNI() {
         <span class="material-symbols-outlined">badge</span>
       </div>
       <h2>Actualiza tu DNI</h2>
-      <p>Para continuar usando COAJ Madrid, necesitas subir tu documento de identidad.</p>
+      <p>Para continuar usando COAJ Madrid, necesitas subir una foto de tu documento de identidad.</p>
       <button class="btn-dni" onclick="irAPerfil()">
         <span class="material-symbols-outlined">person</span>
         Ir a mi perfil
@@ -120,9 +121,11 @@ function mostrarBannerDNI() {
   `;
   document.body.appendChild(banner);
   document.body.style.overflow = 'hidden';
+  bannerDNIActivo = true;
   
-  // Bloquear cierre
+  // Bloquear click en overlay
   banner.querySelector('.dni-overlay').addEventListener('click', (e) => {
+    e.preventDefault();
     e.stopPropagation();
     sacudirModal();
   });
@@ -130,8 +133,11 @@ function mostrarBannerDNI() {
 
 function sacudirModal() {
   const modal = document.querySelector('.dni-modal');
-  modal?.classList.add('shake');
-  setTimeout(() => modal?.classList.remove('shake'), 500);
+  if (!modal) return;
+  
+  modal.classList.remove('shake');
+  void modal.offsetWidth; // Forzar reflow
+  modal.classList.add('shake');
 }
 
 function irAPerfil() {
@@ -141,14 +147,12 @@ function irAPerfil() {
 function cerrarBannerDNI() {
   document.getElementById('bannerDNI')?.remove();
   document.body.style.overflow = '';
+  bannerDNIActivo = false;
 }
-
-
-
-
 
 function cerrarSesion() {
   localStorage.removeItem('coajUsuario');
+  cerrarBannerDNI();
   
   // Desktop
   const headerAuth = document.getElementById('headerAuth');
@@ -157,7 +161,7 @@ function cerrarSesion() {
   if (headerAuth) headerAuth.style.display = 'flex';
   if (headerUser) headerUser.style.display = 'none';
 
-  // Móvil - Bottom Nav
+  // Móvil
   const bottomNavGuest = document.getElementById('bottomNavGuest');
   const bottomNavUser = document.getElementById('bottomNavUser');
 
@@ -175,6 +179,8 @@ function cerrarSesion() {
 // MODAL
 // ============================================
 function abrirModal(tipo) {
+  if (bannerDNIActivo) return; // No abrir si banner DNI está activo
+  
   const modal = document.getElementById('modalAuth');
   if (!modal) return;
   
@@ -189,6 +195,7 @@ function abrirModal(tipo) {
 
 function cerrarModalAuth(e) {
   if (e && e.target !== e.currentTarget) return;
+  if (bannerDNIActivo) return; // No cerrar si banner DNI está activo
   
   const modal = document.getElementById('modalAuth');
   if (!modal) return;
@@ -357,9 +364,10 @@ async function hacerRegistro(e) {
     if (data.success) {
       localStorage.setItem('coajUsuario', JSON.stringify({ 
         alias: datos.alias, 
-        nombre: datos.usuario 
+        nombre: datos.usuario,
+        foto: ''
       }));
-      mostrarUsuarioLogueado({ alias: datos.alias, nombre: datos.usuario });
+      mostrarUsuarioLogueado({ alias: datos.alias, nombre: datos.usuario, foto: '' });
       cerrarModalAuth();
       toast('¡Cuenta creada exitosamente!', 'success');
     } else {
@@ -571,6 +579,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    // Si banner DNI activo, sacudir y bloquear
+    if (bannerDNIActivo) {
+      e.preventDefault();
+      e.stopPropagation();
+      sacudirModal();
+      return;
+    }
+    
+    // Cerrar otros modales
     cerrarModalAuth();
     const userMenu = document.getElementById('userMenu');
     if (userMenu) userMenu.classList.remove('active');
