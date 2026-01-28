@@ -94,40 +94,42 @@
         </div>
       </section>
 
-      <!-- DNI Section -->
-      <section class="dni-section" id="dniSection">
-        <h3 class="section-title">
-          <span class="material-symbols-outlined">badge</span>
-          Documento de Identidad
-        </h3>
-        
-        <div class="dni-status" id="dniStatus">
-          <span class="material-symbols-outlined dni-status-icon pending">hourglass_empty</span>
-          <span class="dni-status-text">Pendiente de subir</span>
-        </div>
+    <!-- DNI Section -->
+<section class="dni-section" id="dniSection">
+  <h3 class="section-title">
+    <span class="material-symbols-outlined">badge</span>
+    Documento de Identidad
+  </h3>
+  
+  <div class="dni-status" id="dniStatus">
+    <span class="material-symbols-outlined dni-status-icon pending">hourglass_empty</span>
+    <span class="dni-status-text">Pendiente de registrar</span>
+  </div>
 
-        <div class="dni-upload-area" id="dniUploadArea">
-          <input type="file" id="dniInput" accept="image/*" onchange="previsualizarDNI(event)" hidden>
-          
-          <div class="dni-preview-container" id="dniPreviewContainer" style="display:none;">
-            <img id="dniPreview" class="dni-preview" src="" alt="Preview DNI">
-            <button class="dni-preview-remove" onclick="eliminarPreview()">
-              <span class="material-symbols-outlined">close</span>
-            </button>
-          </div>
-          
-          <div class="dni-upload-placeholder" id="dniPlaceholder" onclick="document.getElementById('dniInput').click()">
-            <span class="material-symbols-outlined">cloud_upload</span>
-            <p>Haz clic para subir tu DNI</p>
-            <span class="dni-upload-hint">JPG, PNG - Máx 5MB</span>
-          </div>
-        </div>
-
-        <button class="btn-primary btn-full" id="btnSubirDNI" onclick="subirDNI()" disabled>
-          <span class="material-symbols-outlined">upload</span>
-          Subir Documento
-        </button>
-      </section>
+  <div class="dni-form" id="dniForm">
+    <div class="form-group">
+      <label for="dniInput">DNI / NIE</label>
+      <div class="input-field">
+        <span class="material-symbols-outlined">badge</span>
+        <input type="text" id="dniInput" placeholder="12345678A" maxlength="9" oninput="validarDNI(this)">
+      </div>
+      <span class="input-hint" id="dniHint">Formato: 8 números + 1 letra</span>
+    </div>
+    
+    <button class="btn-primary btn-full" id="btnGuardarDNI" onclick="guardarDNI()" disabled>
+      <span class="material-symbols-outlined">save</span>
+      Guardar DNI
+    </button>
+  </div>
+  
+  <div class="dni-saved" id="dniSaved" style="display:none;">
+    <div class="dni-value" id="dniValue">12345678A</div>
+    <span class="dni-verified">
+      <span class="material-symbols-outlined">verified</span>
+      Registrado
+    </span>
+  </div>
+</section>
 
       <!-- Actions Section -->
       <section class="actions-section">
