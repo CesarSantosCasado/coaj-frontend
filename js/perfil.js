@@ -113,6 +113,9 @@ function actualizarEstadoDNI(dni) {
 // ============================================
 // VALIDACIÓN DNI / NIE
 // ============================================
+// ============================================
+// VALIDACIÓN DNI / NIE
+// ============================================
 function validarDNI(input) {
   let valor = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
   input.value = valor;
@@ -141,50 +144,37 @@ function validarDNI(input) {
     return;
   }
   
+  const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
+  let esValido = false;
+  let tipo = '';
+  
   if (regexDNI.test(valor)) {
-    const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
+    tipo = 'DNI';
     const numero = parseInt(valor.substring(0, 8));
     const letraCorrecta = letras[numero % 23];
-    const letraIngresada = valor.charAt(8);
-    
-    if (letraIngresada === letraCorrecta) {
-      inputField.classList.add('valid');
-      hint.classList.add('valid');
-      hint.textContent = '✓ DNI válido';
-      btn.disabled = false;
-    } else {
-      inputField.classList.add('invalid');
-      hint.classList.add('invalid');
-      hint.textContent = `✗ Letra incorrecta (debería ser ${letraCorrecta})`;
-      btn.disabled = true;
-    }
+    esValido = valor.charAt(8) === letraCorrecta;
   } else if (regexNIE.test(valor)) {
-    const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
-    let nieNumero = valor.substring(1, 8);
+    tipo = 'NIE';
     const primeraLetra = valor.charAt(0);
+    let nieNumero = valor.substring(1, 8);
     
     if (primeraLetra === 'X') nieNumero = '0' + nieNumero;
     else if (primeraLetra === 'Y') nieNumero = '1' + nieNumero;
     else if (primeraLetra === 'Z') nieNumero = '2' + nieNumero;
     
     const letraCorrecta = letras[parseInt(nieNumero) % 23];
-    const letraIngresada = valor.charAt(8);
-    
-    if (letraIngresada === letraCorrecta) {
-      inputField.classList.add('valid');
-      hint.classList.add('valid');
-      hint.textContent = '✓ NIE válido';
-      btn.disabled = false;
-    } else {
-      inputField.classList.add('invalid');
-      hint.classList.add('invalid');
-      hint.textContent = `✗ Letra incorrecta (debería ser ${letraCorrecta})`;
-      btn.disabled = true;
-    }
+    esValido = valor.charAt(8) === letraCorrecta;
+  }
+  
+  if (esValido) {
+    inputField.classList.add('valid');
+    hint.classList.add('valid');
+    hint.textContent = `✓ ${tipo} válido`;
+    btn.disabled = false;
   } else {
     inputField.classList.add('invalid');
     hint.classList.add('invalid');
-    hint.textContent = '✗ Formato inválido';
+    hint.textContent = '✗ Documento inválido';
     btn.disabled = true;
   }
 }
