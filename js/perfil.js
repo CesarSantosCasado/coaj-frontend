@@ -2,17 +2,8 @@
 // COAJ MADRID - PERFIL.JS
 // ============================================
 
-// ============================================
-// CONSTANTES
-// ============================================
 const API_BASE = 'https://coajmadrid-8273afef0255.herokuapp.com/api';
-const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dkf1xg2mw/image/upload';
-const CLOUDINARY_PRESET = 'coaj_dni';
 
-// ============================================
-// ESTADO GLOBAL
-// ============================================
-let archivoSeleccionado = null;
 let usuarioActual = null;
 
 // ============================================
@@ -24,15 +15,6 @@ function init() {
   console.log('🚀 Inicializando COAJ Perfil...');
   initTheme();
   verificarSesion();
-  setupEventListeners();
-}
-
-function setupEventListeners() {
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      // Nada que cerrar en perfil
-    }
-  });
 }
 
 // ============================================
@@ -63,13 +45,11 @@ function verificarSesion() {
   const sesion = localStorage.getItem('coajUsuario');
   
   if (!sesion) {
-    console.log('❌ Sin sesión, redirigiendo...');
     window.location.href = '../index.html';
     return;
   }
   
   usuarioActual = JSON.parse(sesion);
-  console.log('✅ Usuario cargado:', usuarioActual.alias);
   cargarPerfil();
 }
 
@@ -79,194 +59,182 @@ function cargarPerfil() {
   const u = usuarioActual;
   const inicial = (u.nombre || u.alias || 'U').charAt(0).toUpperCase();
   
-  // Avatar
-  const profileInitial = document.getElementById('profileInitial');
-  if (profileInitial) profileInitial.textContent = inicial;
+  const el = (id) => document.getElementById(id);
   
-  // Info principal
-  const updates = {
-    profileName: u.nombre || u.alias || 'Usuario',
-    profileAlias: '@' + (u.alias || 'usuario'),
-    profileCentro: u.centro || 'COAJ Madrid',
-    infoEmail: u.email || '-',
-    infoCentro: u.centro || '-'
-  };
+  if (el('profileInitial')) el('profileInitial').textContent = inicial;
+  if (el('profileName')) el('profileName').textContent = u.nombre || u.alias || 'Usuario';
+  if (el('profileAlias')) el('profileAlias').textContent = '@' + (u.alias || 'usuario');
+  if (el('profileCentro')) el('profileCentro').textContent = u.centro || 'COAJ Madrid';
+  if (el('infoEmail')) el('infoEmail').textContent = u.email || '-';
+  if (el('infoCentro')) el('infoCentro').textContent = u.centro || '-';
   
-  Object.entries(updates).forEach(([id, value]) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value;
-  });
-  
-  // Fecha nacimiento
   if (u.fechaNacimiento) {
     const fecha = new Date(u.fechaNacimiento);
-    const infoFecha = document.getElementById('infoFecha');
-    if (infoFecha && !isNaN(fecha)) {
-      infoFecha.textContent = fecha.toLocaleDateString('es-ES');
+    if (!isNaN(fecha) && el('infoFecha')) {
+      el('infoFecha').textContent = fecha.toLocaleDateString('es-ES');
     }
   }
   
-  // Estado DNI
   actualizarEstadoDNI(u.foto);
 }
 
-function actualizarEstadoDNI(fotoUrl) {
+function actualizarEstadoDNI(dni) {
   const alertDNI = document.getElementById('alertDNI');
   const statusIcon = document.querySelector('.dni-status-icon');
   const statusText = document.querySelector('.dni-status-text');
-  const uploadArea = document.getElementById('dniUploadArea');
-  const btnSubir = document.getElementById('btnSubirDNI');
+  const dniForm = document.getElementById('dniForm');
+  const dniSaved = document.getElementById('dniSaved');
+  const dniValue = document.getElementById('dniValue');
   
-  if (fotoUrl) {
-    // DNI ya subido
+  if (dni) {
     if (alertDNI) alertDNI.classList.add('hidden');
     if (statusIcon) {
       statusIcon.textContent = 'check_circle';
       statusIcon.classList.remove('pending');
       statusIcon.classList.add('success');
     }
-    if (statusText) statusText.textContent = 'Documento verificado';
-    if (uploadArea) uploadArea.style.display = 'none';
-    if (btnSubir) btnSubir.style.display = 'none';
+    if (statusText) statusText.textContent = 'Documento registrado';
+    if (dniForm) dniForm.style.display = 'none';
+    if (dniSaved) dniSaved.style.display = 'flex';
+    if (dniValue) dniValue.textContent = dni;
   } else {
-    // DNI pendiente
     if (alertDNI) alertDNI.classList.remove('hidden');
     if (statusIcon) {
       statusIcon.textContent = 'hourglass_empty';
       statusIcon.classList.add('pending');
       statusIcon.classList.remove('success');
     }
-    if (statusText) statusText.textContent = 'Pendiente de subir';
-    if (uploadArea) uploadArea.style.display = 'block';
-    if (btnSubir) btnSubir.style.display = 'flex';
+    if (statusText) statusText.textContent = 'Pendiente de registrar';
+    if (dniForm) dniForm.style.display = 'flex';
+    if (dniSaved) dniSaved.style.display = 'none';
   }
 }
 
 // ============================================
-// UPLOAD DNI
+// VALIDACIÓN DNI / NIE
 // ============================================
-function previsualizarDNI(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+function validarDNI(input) {
+  let valor = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  input.value = valor;
   
-  // Validar tipo
-  if (!file.type.startsWith('image/')) {
-    mostrarToast('Solo se permiten imágenes', 'error');
-    return;
-  }
+  const inputField = input.closest('.input-field');
+  const hint = document.getElementById('dniHint');
+  const btn = document.getElementById('btnGuardarDNI');
   
-  // Validar tamaño (5MB)
-  if (file.size > 5 * 1024 * 1024) {
-    mostrarToast('La imagen no debe superar 5MB', 'error');
-    return;
-  }
+  if (!inputField || !hint || !btn) return;
   
-  archivoSeleccionado = file;
+  inputField.classList.remove('valid', 'invalid');
+  hint.classList.remove('valid', 'invalid');
   
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const preview = document.getElementById('dniPreview');
-    const previewContainer = document.getElementById('dniPreviewContainer');
-    const placeholder = document.getElementById('dniPlaceholder');
-    const btnSubir = document.getElementById('btnSubirDNI');
-    
-    if (preview) preview.src = e.target.result;
-    if (previewContainer) previewContainer.style.display = 'block';
-    if (placeholder) placeholder.style.display = 'none';
-    if (btnSubir) btnSubir.disabled = false;
-  };
-  reader.readAsDataURL(file);
-}
-
-function eliminarPreview() {
-  archivoSeleccionado = null;
-  
-  const input = document.getElementById('dniInput');
-  const preview = document.getElementById('dniPreview');
-  const previewContainer = document.getElementById('dniPreviewContainer');
-  const placeholder = document.getElementById('dniPlaceholder');
-  const btnSubir = document.getElementById('btnSubirDNI');
-  
-  if (input) input.value = '';
-  if (preview) preview.src = '';
-  if (previewContainer) previewContainer.style.display = 'none';
-  if (placeholder) placeholder.style.display = 'block';
-  if (btnSubir) btnSubir.disabled = true;
-}
-
-async function subirDNI() {
-  if (!archivoSeleccionado) {
-    mostrarToast('Selecciona una imagen primero', 'error');
-    return;
-  }
-  
-  const btn = document.getElementById('btnSubirDNI');
-  if (btn) {
+  if (valor.length === 0) {
+    hint.textContent = 'Formato: 8 números + 1 letra';
     btn.disabled = true;
-    btn.classList.add('btn-loading');
-    btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Subiendo...';
+    return;
   }
+  
+  const regexDNI = /^[0-9]{8}[A-Z]$/;
+  const regexNIE = /^[XYZ][0-9]{7}[A-Z]$/;
+  
+  if (valor.length < 9) {
+    hint.textContent = `Faltan ${9 - valor.length} caracteres`;
+    btn.disabled = true;
+    return;
+  }
+  
+  if (regexDNI.test(valor)) {
+    const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
+    const numero = parseInt(valor.substring(0, 8));
+    const letraCorrecta = letras[numero % 23];
+    const letraIngresada = valor.charAt(8);
+    
+    if (letraIngresada === letraCorrecta) {
+      inputField.classList.add('valid');
+      hint.classList.add('valid');
+      hint.textContent = '✓ DNI válido';
+      btn.disabled = false;
+    } else {
+      inputField.classList.add('invalid');
+      hint.classList.add('invalid');
+      hint.textContent = `✗ Letra incorrecta (debería ser ${letraCorrecta})`;
+      btn.disabled = true;
+    }
+  } else if (regexNIE.test(valor)) {
+    const letras = 'TRWAGMYFPDXBNJZSQVHLCKE';
+    let nieNumero = valor.substring(1, 8);
+    const primeraLetra = valor.charAt(0);
+    
+    if (primeraLetra === 'X') nieNumero = '0' + nieNumero;
+    else if (primeraLetra === 'Y') nieNumero = '1' + nieNumero;
+    else if (primeraLetra === 'Z') nieNumero = '2' + nieNumero;
+    
+    const letraCorrecta = letras[parseInt(nieNumero) % 23];
+    const letraIngresada = valor.charAt(8);
+    
+    if (letraIngresada === letraCorrecta) {
+      inputField.classList.add('valid');
+      hint.classList.add('valid');
+      hint.textContent = '✓ NIE válido';
+      btn.disabled = false;
+    } else {
+      inputField.classList.add('invalid');
+      hint.classList.add('invalid');
+      hint.textContent = `✗ Letra incorrecta (debería ser ${letraCorrecta})`;
+      btn.disabled = true;
+    }
+  } else {
+    inputField.classList.add('invalid');
+    hint.classList.add('invalid');
+    hint.textContent = '✗ Formato inválido';
+    btn.disabled = true;
+  }
+}
+
+// ============================================
+// GUARDAR DNI
+// ============================================
+async function guardarDNI() {
+  const input = document.getElementById('dniInput');
+  const dni = input.value.toUpperCase().trim();
+  
+  if (!dni || dni.length !== 9) {
+    mostrarToast('Ingresa un DNI válido', 'error');
+    return;
+  }
+  
+  const btn = document.getElementById('btnGuardarDNI');
+  btn.disabled = true;
+  btn.classList.add('btn-loading');
   
   try {
-    // 1. Subir a Cloudinary
-    console.log('📤 Subiendo imagen a Cloudinary...');
-    const formData = new FormData();
-    formData.append('file', archivoSeleccionado);
-    formData.append('upload_preset', CLOUDINARY_PRESET);
-    
-    const cloudRes = await fetch(CLOUDINARY_URL, {
-      method: 'POST',
-      body: formData
-    });
-    
-    const cloudData = await cloudRes.json();
-    
-    if (!cloudData.secure_url) {
-      throw new Error('Error al subir imagen a Cloudinary');
-    }
-    
-    console.log('✅ Imagen subida:', cloudData.secure_url);
-    
-    // 2. Actualizar en backend
-    console.log('📝 Actualizando en backend...');
-    const apiRes = await fetch(`${API_BASE}/actualizar-foto`, {
+    const res = await fetch(`${API_BASE}/actualizar-foto`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         alias: usuarioActual.alias,
-        fotoUrl: cloudData.secure_url
+        fotoUrl: dni
       })
     });
     
-    const apiData = await apiRes.json();
+    const data = await res.json();
     
-    if (apiData.success) {
-      // Actualizar sesión local
-      usuarioActual.foto = cloudData.secure_url;
+    if (data.success) {
+      usuarioActual.foto = dni;
       localStorage.setItem('coajUsuario', JSON.stringify(usuarioActual));
       
-      // Actualizar UI
-      actualizarEstadoDNI(cloudData.secure_url);
-      mostrarToast('¡DNI actualizado correctamente!', 'success');
+      actualizarEstadoDNI(dni);
+      mostrarToast('¡DNI guardado correctamente!', 'success');
       
-      console.log('✅ DNI actualizado exitosamente');
-      
-      // Redirigir después de 2 segundos
       setTimeout(() => {
         window.location.href = '../index.html';
-      }, 2000);
+      }, 1500);
     } else {
-      throw new Error(apiData.message || 'Error al guardar en backend');
+      throw new Error(data.message || 'Error al guardar');
     }
   } catch (err) {
-    console.error('❌ Error subiendo DNI:', err);
-    mostrarToast('Error al subir el documento', 'error');
-    
-    if (btn) {
-      btn.disabled = false;
-      btn.classList.remove('btn-loading');
-      btn.innerHTML = '<span class="material-symbols-outlined">upload</span> Subir Documento';
-    }
+    console.error('Error:', err);
+    mostrarToast('Error al guardar el DNI', 'error');
+    btn.disabled = false;
+    btn.classList.remove('btn-loading');
   }
 }
 
@@ -276,7 +244,6 @@ async function subirDNI() {
 function cerrarSesion() {
   localStorage.removeItem('coajUsuario');
   mostrarToast('Sesión cerrada', 'success');
-  
   setTimeout(() => {
     window.location.href = '../index.html';
   }, 1000);
@@ -294,8 +261,15 @@ function mostrarToast(mensaje, tipo = 'success') {
   
   if (icon) icon.textContent = tipo === 'success' ? 'check_circle' : 'error';
   if (text) text.textContent = mensaje;
+  toast.className = 'toast show ' + tipo;
   
-  toast.className = `toast show ${tipo}`;
-  
-  setTimeout(() => { toast.classList.remove('show'); }, 3000);
+  setTimeout(() => toast.classList.remove('show'), 3000);
 }
+
+// ============================================
+// EXPONER FUNCIONES GLOBALES
+// ============================================
+window.validarDNI = validarDNI;
+window.guardarDNI = guardarDNI;
+window.cerrarSesion = cerrarSesion;
+window.toggleTheme = toggleTheme;
