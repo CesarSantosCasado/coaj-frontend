@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Mi Perfil - COAJ Madrid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400" rel="stylesheet">
+  <link rel="stylesheet" href="../css/perfil.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-inner">
+        <a href="../index.html" class="header-brand">
+          <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ" class="header-logo">
+          <div class="header-text">
+            <span class="header-greeting">Mi cuenta</span>
+            <h1 class="header-title">Perfil</h1>
+          </div>
+        </a>
+        
+        <nav class="desktop-nav">
+          <a href="../index.html" class="desktop-nav-item">
+            <span class="material-symbols-outlined">home</span>
+            Inicio
+          </a>
+          <a href="actividades.html" class="desktop-nav-item">
+            <span class="material-symbols-outlined">play_circle</span>
+            Actividades
+          </a>
+          <a href="eventos.html" class="desktop-nav-item">
+            <span class="material-symbols-outlined">event</span>
+            Eventos
+          </a>
+          <a href="exposiciones.html" class="desktop-nav-item">
+            <span class="material-symbols-outlined">museum</span>
+            Exposiciones
+          </a>
+        </nav>
+        
+        <div class="header-actions">
+          <button class="icon-btn" onclick="toggleTheme()" title="Cambiar tema">
+            <span class="material-symbols-outlined" id="themeIcon">dark_mode</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Alerta DNI Pendiente -->
+      <div class="alert-dni" id="alertDNI">
+        <span class="material-symbols-outlined">warning</span>
+        <div class="alert-dni-content">
+          <strong>Actualización requerida</strong>
+          <p>Debes subir tu documento de identidad para continuar usando COAJ Madrid.</p>
+        </div>
+      </div>
+
+      <!-- Profile Card -->
+      <section class="profile-card">
+        <div class="profile-avatar" id="profileAvatar">
+          <span id="profileInitial">U</span>
+        </div>
+        <h2 class="profile-name" id="profileName">Usuario</h2>
+        <p class="profile-alias" id="profileAlias">@alias</p>
+        <span class="profile-badge" id="profileCentro">Centro Juvenil</span>
+      </section>
+
+      <!-- Info Section -->
+      <section class="info-section">
+        <h3 class="section-title">
+          <span class="material-symbols-outlined">person</span>
+          Información Personal
+        </h3>
+        
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Email</span>
+            <span class="info-value" id="infoEmail">-</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Fecha de nacimiento</span>
+            <span class="info-value" id="infoFecha">-</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Centro Juvenil</span>
+            <span class="info-value" id="infoCentro">-</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- DNI Section -->
+      <section class="dni-section" id="dniSection">
+        <h3 class="section-title">
+          <span class="material-symbols-outlined">badge</span>
+          Documento de Identidad
+        </h3>
+        
+        <div class="dni-status" id="dniStatus">
+          <span class="material-symbols-outlined dni-status-icon pending">hourglass_empty</span>
+          <span class="dni-status-text">Pendiente de subir</span>
+        </div>
+
+        <div class="dni-upload-area" id="dniUploadArea">
+          <input type="file" id="dniInput" accept="image/*" onchange="previsualizarDNI(event)" hidden>
+          
+          <div class="dni-preview-container" id="dniPreviewContainer" style="display:none;">
+            <img id="dniPreview" class="dni-preview" src="" alt="Preview DNI">
+            <button class="dni-preview-remove" onclick="eliminarPreview()">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          
+          <div class="dni-upload-placeholder" id="dniPlaceholder" onclick="document.getElementById('dniInput').click()">
+            <span class="material-symbols-outlined">cloud_upload</span>
+            <p>Haz clic para subir tu DNI</p>
+            <span class="dni-upload-hint">JPG, PNG - Máx 5MB</span>
+          </div>
+        </div>
+
+        <button class="btn-primary btn-full" id="btnSubirDNI" onclick="subirDNI()" disabled>
+          <span class="material-symbols-outlined">upload</span>
+          Subir Documento
+        </button>
+      </section>
+
+      <!-- Actions Section -->
+      <section class="actions-section">
+        <button class="btn-outline btn-full" onclick="cerrarSesion()">
+          <span class="material-symbols-outlined">logout</span>
+          Cerrar Sesión
+        </button>
+      </section>
+    </main>
+
+    <!-- Bottom Navigation (Mobile) -->
+    <nav class="bottom-nav">
+      <div class="nav-items">
+        <a href="../index.html" class="nav-item">
+          <span class="material-symbols-outlined">home</span>
+          <span>Inicio</span>
+        </a>
+        <a href="actividades.html" class="nav-item">
+          <span class="material-symbols-outlined">play_circle</span>
+          <span>Actividades</span>
+        </a>
+        <a href="eventos.html" class="nav-item">
+          <span class="material-symbols-outlined">event</span>
+          <span>Eventos</span>
+        </a>
+        <a href="exposiciones.html" class="nav-item">
+          <span class="material-symbols-outlined">museum</span>
+          <span>Expos</span>
+        </a>
+        <a href="#" class="nav-item active">
+          <span class="material-symbols-outlined">person</span>
+          <span>Perfil</span>
+        </a>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span class="material-symbols-outlined" id="toastIcon">check_circle</span>
+    <span id="toastMessage">Mensaje</span>
+  </div>
+
+  <script src="../js/perfil.js"></script>
+</body>
+</html>
