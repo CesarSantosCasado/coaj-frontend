@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Espacios y Reservas - COAJ Madrid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL@20..48,100..700,0..1" rel="stylesheet">
+  <link rel="stylesheet" href="../css/espacios.css">
+</head>
+<body>
+
+  <!-- ========================================
+       LOGIN MODAL
+       ======================================== -->
+  <div class="login-overlay" id="loginModal">
+    <div class="login-card">
+      <div class="login-header">
+        <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ Madrid" class="login-logo">
+        <h2>Bienvenido a COAJ</h2>
+        <p>Reserva tu espacio favorito</p>
+      </div>
+      <div class="login-body">
+        <button class="btn-guest" onclick="entrarComoInvitado()">
+          <span class="material-symbols-outlined">person</span>
+          Continuar como Invitado
+        </button>
+        <div class="login-divider">o inicia sesión</div>
+        <form onsubmit="iniciarSesion(event)">
+          <div class="form-group">
+            <div class="input-field">
+              <span class="material-symbols-outlined">alternate_email</span>
+              <input type="text" id="alias" placeholder="Usuario o alias" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="input-field">
+              <span class="material-symbols-outlined">lock</span>
+              <input type="password" id="contrasena" placeholder="Contraseña" required>
+            </div>
+          </div>
+          <div class="login-error" id="loginError"></div>
+          <button type="submit" class="btn-login">
+            <span class="material-symbols-outlined">login</span>
+            Iniciar Sesión
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================
+       APP CONTAINER
+       ======================================== -->
+  <div class="app">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-inner">
+        <a href="../index.html" class="header-brand">
+          <img src="https://res.cloudinary.com/dkf1xg2mw/image/upload/v1768236309/WhatsApp_Image_2025-11-28_at_9.34.00_AM_kygkkg_bmvdp3.jpg" alt="COAJ" class="header-logo">
+          <div class="header-text">
+            <span class="header-greeting" id="headerGreeting">Bienvenido</span>
+            <h1 class="header-title">Espacios y Reservas</h1>
+          </div>
+        </a>
+
+        <!-- Desktop Navigation -->
+        <nav class="desktop-nav">
+          <a href="../index.html" class="desktop-nav-item">
+            <span class="material-symbols-outlined">home</span> Inicio
+          </a>
+          <a href="actividades.html" class="desktop-nav-item">
+            <span class="material-symbols-outlined">play_circle</span> Actividades
+          </a>
+          <a href="#" class="desktop-nav-item active">
+            <span class="material-symbols-outlined">meeting_room</span> Espacios
+          </a>
+          <a href="eventos.html" class="desktop-nav-item">
+            <span class="material-symbols-outlined">event</span> Eventos
+          </a>
+        </nav>
+
+        <div class="header-actions">
+          <button class="icon-btn" onclick="refrescarDatos()" title="Actualizar">
+            <span class="material-symbols-outlined">refresh</span>
+          </button>
+          <button class="icon-btn" onclick="toggleTheme()" title="Cambiar tema">
+            <span class="material-symbols-outlined" id="themeIcon">dark_mode</span>
+          </button>
+          <button class="avatar-btn" id="headerAvatar" onclick="toggleUserMenu()">
+            <span id="avatarInitial">U</span>
+          </button>
+        </div>
+
+        <!-- User Menu -->
+        <div class="user-menu" id="userMenu">
+          <div class="user-menu-header">
+            <div class="user-menu-avatar"><span id="menuAvatarInitial">U</span></div>
+            <span class="user-menu-name" id="menuUserName">Usuario</span>
+          </div>
+          <button class="user-menu-item" onclick="toggleTheme()">
+            <span class="material-symbols-outlined" id="menuThemeIcon">dark_mode</span>
+            <span id="menuThemeText">Modo Oscuro</span>
+          </button>
+          <button class="user-menu-item logout" onclick="cerrarSesion()">
+            <span class="material-symbols-outlined">logout</span>
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+
+      <!-- Stats Bar -->
+      <section class="stats-bar" id="statsBar">
+        <div class="stat-card accent">
+          <span class="material-symbols-outlined">apartment</span>
+          <div class="stat-data"><span class="stat-num" id="statCentros">0</span><span class="stat-label">Centros</span></div>
+        </div>
+        <div class="stat-card">
+          <span class="material-symbols-outlined">meeting_room</span>
+          <div class="stat-data"><span class="stat-num" id="statSalas">0</span><span class="stat-label">Espacios</span></div>
+        </div>
+        <div class="stat-card">
+          <span class="material-symbols-outlined">category</span>
+          <div class="stat-data"><span class="stat-num" id="statTipos">0</span><span class="stat-label">Categorías</span></div>
+        </div>
+        <div class="stat-card success">
+          <span class="material-symbols-outlined">event_available</span>
+          <div class="stat-data"><span class="stat-num" id="statDisponibles">0</span><span class="stat-label">Disponibles</span></div>
+        </div>
+      </section>
+
+      <!-- Filters Bar -->
+      <section class="filters-section">
+        <div class="search-bar">
+          <span class="material-symbols-outlined">search</span>
+          <input type="text" id="searchInput" placeholder="Buscar sala, centro o categoría..." oninput="filtrarGlobal()">
+          <button class="search-clear hidden" id="searchClear" onclick="limpiarBusqueda()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="filters-chips" id="filtersChips"></div>
+        <div class="filters-row">
+          <select class="filter-select" id="filtroCentro" onchange="aplicarFiltros()">
+            <option value="">📍 Todos los centros</option>
+          </select>
+          <select class="filter-select" id="filtroTipo" onchange="aplicarFiltros()">
+            <option value="">🏷️ Todas las categorías</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Loading -->
+      <div class="loading-state" id="loading">
+        <div class="spinner"></div>
+        <p>Cargando espacios...</p>
+      </div>
+
+      <!-- Empty -->
+      <div class="empty-state" id="emptyState">
+        <span class="material-symbols-outlined">search_off</span>
+        <h3>Sin resultados</h3>
+        <p>No se encontraron espacios con esos filtros</p>
+      </div>
+
+      <!-- ========================================
+           VISTA LISTADO (centros + salas)
+           ======================================== -->
+      <div id="vistaListado"></div>
+
+      <!-- ========================================
+           VISTA DETALLE SALA
+           ======================================== -->
+      <div id="vistaDetalle" class="vista-detalle"></div>
+
+    </main>
+
+    <!-- Bottom Nav Mobile -->
+    <nav class="bottom-nav">
+      <div id="bottomNavGuest" class="nav-items">
+        <a href="../index.html" class="nav-item"><span class="material-symbols-outlined">home</span><span>Inicio</span></a>
+        <a href="actividades.html" class="nav-item"><span class="material-symbols-outlined">play_circle</span><span>Actividades</span></a>
+        <a href="#" class="nav-item active"><span class="material-symbols-outlined">meeting_room</span><span>Espacios</span></a>
+        <a href="eventos.html" class="nav-item"><span class="material-symbols-outlined">event</span><span>Eventos</span></a>
+        <button class="nav-item" onclick="mostrarLoginModal()"><span class="material-symbols-outlined">login</span><span>Entrar</span></button>
+      </div>
+      <div id="bottomNavUser" class="nav-items" style="display:none;">
+        <a href="../index.html" class="nav-item"><span class="material-symbols-outlined">home</span><span>Inicio</span></a>
+        <a href="actividades.html" class="nav-item"><span class="material-symbols-outlined">play_circle</span><span>Actividades</span></a>
+        <a href="#" class="nav-item active"><span class="material-symbols-outlined">meeting_room</span><span>Espacios</span></a>
+        <a href="eventos.html" class="nav-item"><span class="material-symbols-outlined">event</span><span>Eventos</span></a>
+        <button class="nav-item" onclick="cerrarSesion()"><span class="material-symbols-outlined">logout</span><span>Salir</span></button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- ========================================
+       MODAL RESERVA
+       ======================================== -->
+  <div class="modal-overlay" id="reservaOverlay" onclick="cerrarModalReserva()"></div>
+  <div class="modal-drawer" id="reservaModal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <button class="modal-back" onclick="cerrarModalReserva()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+      <h2 class="modal-title">
+        <span class="material-symbols-outlined" style="color:var(--coaj-accent)">event_available</span>
+        <span>Confirmar Reserva</span>
+      </h2>
+    </div>
+    <div class="modal-body" id="reservaModalBody"></div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span class="material-symbols-outlined" id="toastIcon">check_circle</span>
+    <span id="toastMessage">Mensaje</span>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../js/config.js"></script>
+  <script src="../js/espacios.js"></script>
+</body>
+</html>
