@@ -234,6 +234,15 @@ function refrescarDatos() {
 window.refrescarDatos = refrescarDatos;
 
 function procesarDatos(rawEspacios) {
+  console.log('🔍 Datos recibidos:', rawEspacios);
+  console.log('🔍 Tipo:', typeof rawEspacios);
+  console.log('🔍 Es array:', Array.isArray(rawEspacios));
+  console.log('🔍 Cantidad:', rawEspacios?.length);
+  
+  if (!rawEspacios || !Array.isArray(rawEspacios)) {
+    console.error('❌ rawEspacios no es un array válido');
+    return;
+  } {
   centrosMap = new Map();
   
   rawEspacios.forEach((espacio) => {
