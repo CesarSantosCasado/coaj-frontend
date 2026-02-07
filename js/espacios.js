@@ -674,7 +674,7 @@ async function renderSlots() {
   if (!selDate || !container || !espacioActivo) return;
 
   const dayStr = selDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-  const fechaApi = selDate.toLocaleDateString('en-US'); // MM/DD/YYYY para AppSheet
+const fechaApi = selDate.toLocaleDateString('en-US').replace(/\//g, '-'); // MM-DD-YYYY
   
   try {
     const res = await fetch(`${API_BASE}/disponibilidad/${encodeURIComponent(espacioActivo.nombre)}/${fechaApi}`);
